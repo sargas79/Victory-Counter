@@ -1,0 +1,13 @@
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Build output
+node_modules/
+module.zip
+
+# Local preview, not part of the module
+hud-preview.html
