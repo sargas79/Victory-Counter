@@ -10,10 +10,11 @@ import { MODULE_ID, STATUS, log, logError, warn } from "./constants.js";
 import { VictoryCounterPanel } from "./apps/control-panel.js";
 import { VictoryCounterOverlay } from "./apps/overlay.js";
 import { exposeApi } from "./api.js";
-import { getTracks } from "./state.js";
+import { getTracks, sanitizeTracks } from "./state.js";
 import { registerSettings } from "./settings.js";
+import { runMigration } from "./migration.js";
 
-/** Tracks the last status rendered per track id, so resolutions announce once. */
+/** Tracks the last status rendered per track id, so completions announce once. */
 const lastKnownStatus = new Map();
 
 /* -------------------------------------------- */
@@ -24,7 +25,7 @@ const lastKnownStatus = new Map();
  * Bring every piece of this client's UI in line with the current shared state.
  * Called on setting changes (shared and local) and on `ready`.
  * @param {object} [options]
- * @param {boolean} [options.announce=true] Show a notification when a track resolves.
+ * @param {boolean} [options.announce=true] Show a notification when a track completes.
  * @returns {Promise<void>}
  */
 export async function refreshUI({ announce = true } = {}) {
@@ -35,16 +36,17 @@ export async function refreshUI({ announce = true } = {}) {
     for (const track of tracks) {
       seenIds.add(track.id);
       const previousStatus = lastKnownStatus.get(track.id);
-      if (announce && track.active && track.status !== previousStatus) {
-        if (track.status === STATUS.WON) {
-          ui.notifications.info(
-            game.i18n.format("PVC.Notify.Won", { title: track.title || game.i18n.localize("PVC.DefaultTitle") })
-          );
-        } else if (track.status === STATUS.LOST) {
-          ui.notifications.warn(
-            game.i18n.format("PVC.Notify.Lost", { title: track.title || game.i18n.localize("PVC.DefaultTitle") })
-          );
-        }
+      if (
+        announce &&
+        track.active &&
+        track.status === STATUS.COMPLETE &&
+        track.status !== previousStatus
+      ) {
+        ui.notifications.info(
+          game.i18n.format("PVC.Notify.Complete", {
+            title: track.title || game.i18n.localize("PVC.DefaultTitle")
+          })
+        );
       }
       lastKnownStatus.set(track.id, track.active ? track.status : undefined);
     }
@@ -94,15 +96,27 @@ async function onSetup() {
     await foundry.applications.handlebars.loadTemplates([
       `modules/${MODULE_ID}/templates/overlay.hbs`,
       `modules/${MODULE_ID}/templates/control-panel.hbs`,
-      `modules/${MODULE_ID}/templates/chat-card.hbs`
+      `modules/${MODULE_ID}/templates/chat-card.hbs`,
+      `modules/${MODULE_ID}/templates/progress-ring.hbs`
     ]);
   } catch (err) {
     logError("Failed to preload templates.", err);
   }
 }
 
-/** `ready` — expose the API and draw the overlay for the first time. */
+/**
+ * `ready` — migrate stored data (GM only), expose the API, and draw the overlay.
+ *
+ * Reads are migrated in memory on every client regardless, so a world whose GM
+ * has not yet logged in still renders correctly for players.
+ */
 async function onReady() {
+  try {
+    await runMigration(sanitizeTracks);
+  } catch (err) {
+    logError("Track data migration failed; continuing with in-memory migration only.", err);
+  }
+
   exposeApi();
   await refreshUI({ announce: false });
   log(`Ready. PF2e system version: ${game.system.version}. Core: ${game.version}.`);

@@ -3,6 +3,93 @@
 All notable changes to PF2e Victory Counter are documented here.
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-08-17
+
+### Changed
+
+- **Breaking:** a track now measures progress toward a **single target**.
+  Failure counters, failure thresholds, failure buttons and the win/loss
+  distinction are gone. A track is either *in progress* or *complete*, and it
+  completes when `current >= target`.
+- **Breaking:** the track schema moved from `successes` / `requiredSuccesses` /
+  `failures` / `requiredFailures` / `trackFailures` to `current` / `target` /
+  `type`. Saved data is migrated automatically — see *Migration* below.
+- **Breaking API:** `addSuccess(id, delta)` is deprecated in favour of
+  `increase(id, amount)` / `decrease(id, amount)` / `adjust(id, delta)`;
+  `setCounts(id, s, f)` is deprecated in favour of `setProgress(id, value)`.
+  Both shims still work and log a one-time console deprecation notice.
+  `addFailure()` no longer does anything: it notifies the caller and returns
+  `null`. Model a "bad" track as a separate negative track instead.
+- Counter labels dropped the word "successes" everywhere a user can see it.
+  `2 / 5 Successes` is now `2 / 5`, *Successes Required* is now **Target**, and
+  *Add Success* is now **Increase progress by 1**. Screen-reader labels and
+  tooltips keep the full sentence; the visible chrome stays terse.
+- The default track name changed from "Victory Points" to "Progress Track".
+- `--pvc-danger` was replaced by `--pvc-negative` (`#ef7f6e`, 5.81:1 against the
+  card surface). Any personal CSS override of `--pvc-danger` needs renaming.
+
+### Added
+
+- **Track polarity.** Every track is **Positive** (the default) or **Negative**,
+  stored per track. Negative tracks draw their progress numbers and their ring
+  in red instead of white, for every user rather than just the GM. Colour is
+  never the only signal: each track also carries an up/down arrow icon, the
+  written word *Positive* / *Negative*, a tooltip, and a full screen-reader
+  label ("Raise the Alarm, Negative track, 2 of 5").
+- **Circular progress rings.** A world setting (*Show Progress Rings*, on by
+  default) draws an SVG ring per track with `current / target` in the centre.
+  The ring is empty at 0, fills as progress is made, closes and picks up a halo
+  at completion, and is clamped to 100% when progress exceeds the target. Pure
+  SVG plus CSS — no charting dependency. Turning the setting off restores the
+  large figure and horizontal bar.
+- **Allow Progress Beyond Target** world setting, off by default. While it is
+  off, increasing a completed track is refused with a notification explaining
+  how to change it, and a large increase is capped at the target rather than
+  overshooting. Decreases are never blocked, so a mis-click stays reversible.
+- **Counter Width** client setting plus a drag grip in the HUD's bottom-right
+  corner, so each user sizes the HUD to their own screen.
+- Versioned, idempotent data migration with a one-time verbatim backup of the
+  pre-3.0 track array, and a migration summary logged in debug mode only.
+
+### Fixed
+
+- **Window resizing and reflow.** The HUD and the control panel now lay their
+  track cards out with CSS Grid (`repeat(auto-fill, minmax(…, 1fr))`), so the
+  column count follows the available width: one column when narrow, two or
+  three when wide. Cards carry `min-width: 0` so long track names truncate
+  instead of forcing the grid wider than its container.
+- Opening a fourth track no longer forces a scrollbar on its own. Scrolling now
+  starts only when the content genuinely reaches the available viewport height,
+  and widening the window removes it again.
+- The control panel is properly resizable in v14: it opens at 720×660, enforces
+  a 380×320 minimum in both CSS and `setPosition()`, and refits itself against
+  the viewport after tracks are added or removed — including pulling itself back
+  on screen if a stale position left the resize handle out of reach.
+- The HUD's resize grip is a sibling of the scrolling card grid rather than a
+  child, so it stays reachable with any number of tracks open.
+- All animation is suppressed under `prefers-reduced-motion: reduce`. Nothing in
+  the interface depends on motion to be understood.
+
+### Migration
+
+Running 3.0 for the first time migrates the world's saved tracks:
+
+| Before (schema 2) | After (schema 3) |
+|---|---|
+| `successes` | `current` |
+| `requiredSuccesses` | `target` |
+| *(none)* | `type: "positive"` |
+| `failures`, `requiredFailures`, `trackFailures` | preserved under `legacy` |
+
+- Tracks with no stored `type` become **Positive**.
+- The migration is idempotent — running it again changes nothing.
+- A verbatim copy of the pre-migration array is written once to a hidden
+  `legacyBackup` world setting. No existing setting or track record is deleted.
+- Malformed or partial records fall back to safe defaults instead of throwing.
+- The failure *count* cannot be represented in the new model. It is preserved in
+  the data but no longer displayed; recreate it as a Negative track if you were
+  using it during an ongoing challenge.
+
 ## [2.0.0] - 2026-08-17
 
 ### Changed

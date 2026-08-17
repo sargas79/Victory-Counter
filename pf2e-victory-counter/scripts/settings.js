@@ -4,6 +4,7 @@
  */
 
 import {
+  LIMITS,
   MODULE_ID,
   OVERLAY_POSITIONS,
   SETTINGS,
@@ -37,6 +38,27 @@ export function registerSettings(onStateChange, onLocalChange) {
 
   game.settings.register(MODULE_ID, SETTINGS.UNDO, {
     name: "PVC.Settings.Undo.Name",
+    scope: "world",
+    config: false,
+    type: Object,
+    default: {}
+  });
+
+  // Schema version of the data currently in SETTINGS.TRACKS. 0 means "never
+  // migrated", which is also the correct answer for a brand new world (there
+  // is nothing to migrate, and the first write stamps the current version).
+  game.settings.register(MODULE_ID, SETTINGS.SCHEMA, {
+    name: "PVC.Settings.Schema.Name",
+    scope: "world",
+    config: false,
+    type: Number,
+    default: 0
+  });
+
+  // Verbatim copy of the pre-3.0 track array, written once by the migration and
+  // never read by the running module. Kept so nothing is lost irreversibly.
+  game.settings.register(MODULE_ID, SETTINGS.LEGACY_BACKUP, {
+    name: "PVC.Settings.LegacyBackup.Name",
     scope: "world",
     config: false,
     type: Object,
@@ -84,6 +106,23 @@ export function registerSettings(onStateChange, onLocalChange) {
     default: {}
   });
 
+  // Written by the HUD resize grip. Same reasoning as the drag offset: the grip
+  // sets the width live, so an onChange re-render would fight the pointer.
+  game.settings.register(MODULE_ID, SETTINGS.OVERLAY_WIDTH, {
+    name: "PVC.Settings.OverlayWidth.Name",
+    hint: "PVC.Settings.OverlayWidth.Hint",
+    scope: "client",
+    config: true,
+    type: Number,
+    default: 320,
+    range: {
+      min: LIMITS.MIN_OVERLAY_WIDTH,
+      max: LIMITS.MAX_OVERLAY_WIDTH,
+      step: 8
+    },
+    onChange: () => onLocalChange()
+  });
+
   game.settings.register(MODULE_ID, SETTINGS.OVERLAY_SCALE, {
     name: "PVC.Settings.OverlayScale.Name",
     hint: "PVC.Settings.OverlayScale.Hint",
@@ -96,6 +135,28 @@ export function registerSettings(onStateChange, onLocalChange) {
   });
 
   // --- GM behaviour toggles (world scope, GM-only) ------------------------
+
+  game.settings.register(MODULE_ID, SETTINGS.SHOW_RINGS, {
+    name: "PVC.Settings.ShowRings.Name",
+    hint: "PVC.Settings.ShowRings.Hint",
+    scope: "world",
+    config: true,
+    restricted: true,
+    type: Boolean,
+    default: true,
+    onChange: () => onStateChange()
+  });
+
+  game.settings.register(MODULE_ID, SETTINGS.ALLOW_OVERSHOOT, {
+    name: "PVC.Settings.AllowOvershoot.Name",
+    hint: "PVC.Settings.AllowOvershoot.Hint",
+    scope: "world",
+    config: true,
+    restricted: true,
+    type: Boolean,
+    default: false,
+    onChange: () => onStateChange()
+  });
 
   game.settings.register(MODULE_ID, SETTINGS.POST_CHAT, {
     name: "PVC.Settings.PostChat.Name",
