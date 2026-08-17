@@ -374,7 +374,7 @@ export async function resetTrackCounts(id) {
   };
   const result = await persistTracks(
     current.map((t) => (t.id === id ? updated : t)),
-    { reason: game.i18n.localize("PVC.Reason.Reset") }
+    { announceTrack: updated, announcePrevious: track, reason: game.i18n.localize("PVC.Reason.Reset") }
   );
   if (result) ui.notifications.info(game.i18n.localize("PVC.Notify.Reset"));
   return result ? result.find((t) => t.id === id) ?? null : null;
@@ -416,7 +416,7 @@ export async function moveTrack(id, direction) {
 
   const next = [...current];
   [next[index], next[target]] = [next[target], next[index]];
-  return persistTracks(next, { snapshot: false, reason: game.i18n.localize("PVC.Reason.Reordered") });
+  return persistTracks(next, { reason: game.i18n.localize("PVC.Reason.Reordered") });
 }
 
 /**
