@@ -1,0 +1,60 @@
+name: Release Module
+
+# Publishes a Foundry-installable release when you publish a GitHub Release
+# whose tag looks like `v1.0.0`. The workflow rewrites version/manifest/download
+# in module.json so the published manifest always points at itself.
+
+on:
+  release:
+    types: [published]
+
+env:
+  MODULE_ID: pf2e-victory-counter
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Derive version from tag
+        id: version
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Verify the module folder matches the module id
+        run: test -d "${MODULE_ID}" || (echo "Missing ${MODULE_ID}/ directory" && exit 1)
+
+      - name: Rewrite module.json for this release
+        working-directory: ${{ env.MODULE_ID }}
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          jq --arg version "$VERSION" \
+             --arg manifest "$REPO_URL/releases/latest/download/module.json" \
+             --arg download "$REPO_URL/releases/download/${GITHUB_REF_NAME}/module.zip" \
+             '.version = $version | .manifest = $manifest | .download = $download' \
+             module.json > module.tmp.json
+          mv module.tmp.json module.json
+          cat module.json
+
+      - name: Validate JSON assets
+        working-directory: ${{ env.MODULE_ID }}
+        run: |
+          jq empty module.json
+          jq empty lang/en.json
+
+      - name: Create module.zip
+        working-directory: ${{ env.MODULE_ID }}
+        run: zip -r ../module.zip . -x '*.git*'
+
+      - name: Attach artifacts to the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            module.zip
+            ${{ env.MODULE_ID }}/module.json
