@@ -1,0 +1,691 @@
+/* ==========================================================================
+   PF2e Victory Counter — Nocturne
+   Ported from the "Victory Points HUD" design (variant 1a, collapsed 1e).
+
+   Every selector is namespaced under .pvc / #pvc-overlay, so nothing here can
+   leak into core Foundry or PF2e system styling.
+
+   Palette note: Nocturne is a mono-accent system with no danger role. The
+   accent carries progress toward victory; the failure counter uses the neutral
+   ramp so it reads as pressure without competing. --pvc-danger is the single
+   sanctioned extension, used only for the "challenge lost" treatment.
+   ========================================================================== */
+
+.pvc {
+  /* --- Nocturne tokens ------------------------------------------------- */
+  --pvc-bg: #161826;
+  --pvc-surface: #232532;
+  --pvc-surface-2: #1b1d29;
+  --pvc-text: #e9e9ed;
+
+  --pvc-neutral-400: #b2b6ca;
+  --pvc-neutral-500: #9397ab;
+  --pvc-neutral-600: #75798c;
+  --pvc-neutral-700: #595d6c;
+  --pvc-neutral-800: #3f424d;
+  --pvc-neutral-900: #292b31;
+
+  --pvc-accent: #9184d9;
+  --pvc-accent-300: #d2cefd;
+  --pvc-accent-400: #b5abfc;
+  --pvc-accent-700: #5d5294;
+  --pvc-accent-800: #423a6a;
+
+  --pvc-divider: rgba(233, 233, 237, 0.16);
+  --pvc-hairline: rgba(233, 233, 237, 0.08);
+
+  /* Extension beyond the design system — lost state only. */
+  --pvc-danger: #c2705f;
+
+  --pvc-radius-sm: 4px;
+  --pvc-radius-md: 8px;
+
+  --pvc-shadow: 0 0 0 1px var(--pvc-neutral-800), 0 6px 18px rgba(0, 0, 0, 0.55);
+
+  /* Inter if the user has it, otherwise Foundry's UI face. No web font is
+     fetched: many worlds run offline, and a blocked request would flash. */
+  --pvc-font: "Inter", var(--font-primary, system-ui), system-ui, sans-serif;
+  --pvc-mono: ui-monospace, Menlo, Consolas, monospace;
+
+  --pvc-scale: 1;
+}
+
+@keyframes pvcGlow {
+  0%, 100% { box-shadow: 0 0 0 1px var(--pvc-accent-800), 0 0 18px rgba(145, 132, 217, 0.18); }
+  50%      { box-shadow: 0 0 0 1px var(--pvc-accent-700), 0 0 30px rgba(145, 132, 217, 0.34); }
+}
+
+/* --------------------------------------------------------------------------
+   Shell — frameless ApplicationV2, placed by CSS or the drag handler
+   -------------------------------------------------------------------------- */
+
+#pvc-overlay {
+  position: fixed;
+  z-index: var(--z-index-app, 30);
+  font-family: var(--pvc-font);
+  color: var(--pvc-text);
+  transform: scale(var(--pvc-scale));
+  transform-origin: top left;
+}
+
+#pvc-overlay.pvc-at-top-center    { top: 10px; left: 50%; transform: translateX(-50%) scale(var(--pvc-scale)); transform-origin: top center; }
+#pvc-overlay.pvc-at-top-left      { top: 10px; left: 220px; }
+#pvc-overlay.pvc-at-top-right     { top: 10px; right: 320px; transform-origin: top right; }
+#pvc-overlay.pvc-at-bottom-center { bottom: 14px; left: 50%; transform: translateX(-50%) scale(var(--pvc-scale)); transform-origin: bottom center; }
+
+/* Once dragged, inline left/top win and the centring transform is dropped. */
+#pvc-overlay.pvc-free {
+  right: auto;
+  bottom: auto;
+  transform: scale(var(--pvc-scale));
+  transform-origin: top left;
+}
+
+#pvc-overlay.pvc-dragging {
+  user-select: none;
+  cursor: grabbing;
+}
+
+/* --------------------------------------------------------------------------
+   Expanded panel (1a)
+   -------------------------------------------------------------------------- */
+
+#pvc-overlay .pvc-panel-surface {
+  width: 296px;
+  border-radius: var(--pvc-radius-md);
+  background: rgba(35, 37, 50, 0.94);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--pvc-shadow);
+  overflow: hidden;
+}
+
+/* --- Title bar (grab handle) ----------------------------------------- */
+
+#pvc-overlay .pvc-chrome {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 6px;
+  background: linear-gradient(#2a2c3a, #1e2030);
+  border-bottom: 1px solid var(--pvc-neutral-800);
+  cursor: grab;
+}
+
+#pvc-overlay.pvc-dragging .pvc-chrome { cursor: grabbing; }
+
+#pvc-overlay .pvc-grip {
+  display: grid;
+  grid-template-columns: 2px 2px;
+  gap: 3px;
+  padding: 2px 1px;
+  flex: none;
+}
+
+#pvc-overlay .pvc-grip span {
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--pvc-neutral-600);
+}
+
+#pvc-overlay .pvc-chrome-title {
+  flex: 1;
+  min-width: 0;
+  font: 500 10.5px/1 var(--pvc-font);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--pvc-neutral-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#pvc-overlay .pvc-chrome-btn {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border: 1px solid transparent;
+  border-radius: var(--pvc-radius-sm);
+  color: var(--pvc-neutral-400);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+#pvc-overlay .pvc-chrome-btn svg { width: 13px; height: 13px; }
+#pvc-overlay .pvc-chrome-btn:hover,
+#pvc-overlay .pvc-chrome-btn:focus-visible { background: rgba(233, 233, 237, 0.09); }
+
+/* GM-only affordances carry the accent. */
+#pvc-overlay .pvc-chrome-btn.pvc-accent { color: var(--pvc-accent); }
+#pvc-overlay .pvc-chrome-btn.pvc-accent:hover,
+#pvc-overlay .pvc-chrome-btn.pvc-accent:focus-visible { background: rgba(145, 132, 217, 0.14); }
+
+/* Eye button, "hidden from players" state: dimmed and struck through. */
+#pvc-overlay .pvc-chrome-btn.pvc-off {
+  position: relative;
+  color: var(--pvc-neutral-600);
+}
+
+#pvc-overlay .pvc-chrome-btn.pvc-off::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  top: 50%;
+  height: 1px;
+  background: currentcolor;
+  transform: rotate(-40deg);
+}
+
+/* --- Body ------------------------------------------------------------ */
+
+#pvc-overlay .pvc-body {
+  padding: 14px 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#pvc-overlay .pvc-counter {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+#pvc-overlay .pvc-counter-failure {
+  padding-top: 11px;
+  border-top: 1px solid var(--pvc-hairline);
+}
+
+#pvc-overlay .pvc-readout {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#pvc-overlay .pvc-figure {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+#pvc-overlay .pvc-figure-value {
+  font: 500 40px/1 var(--pvc-font);
+  letter-spacing: -0.03em;
+  color: var(--pvc-text);
+  font-variant-numeric: tabular-nums;
+}
+
+#pvc-overlay .pvc-figure-target {
+  font: 400 13px/1 var(--pvc-font);
+  color: var(--pvc-neutral-600);
+  font-variant-numeric: tabular-nums;
+}
+
+#pvc-overlay .pvc-kicker {
+  font: 400 10px/1 var(--pvc-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pvc-neutral-500);
+  padding-bottom: 4px;
+  white-space: nowrap;
+}
+
+/* The failure counter is quieter by one step across the board. */
+#pvc-overlay .pvc-counter-failure .pvc-figure-value { font-size: 28px; color: var(--pvc-neutral-400); }
+#pvc-overlay .pvc-counter-failure .pvc-kicker { color: var(--pvc-neutral-600); }
+
+/* --- Progress tracks ------------------------------------------------- */
+
+#pvc-overlay .pvc-track {
+  height: 5px;
+  border-radius: 3px;
+  background: var(--pvc-neutral-900);
+  overflow: hidden;
+}
+
+#pvc-overlay .pvc-track-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--pvc-accent);
+  box-shadow: 0 0 10px rgba(145, 132, 217, 0.5);
+  transition: width 220ms ease;
+}
+
+#pvc-overlay .pvc-counter-failure .pvc-track { height: 4px; }
+
+#pvc-overlay .pvc-counter-failure .pvc-track-fill {
+  background: var(--pvc-neutral-600);
+  box-shadow: none;
+}
+
+#pvc-overlay.pvc-lost .pvc-counter-failure .pvc-track-fill {
+  background: var(--pvc-danger);
+  box-shadow: 0 0 10px rgba(194, 112, 95, 0.45);
+}
+
+/* --- GM controls ----------------------------------------------------- */
+
+#pvc-overlay .pvc-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#pvc-overlay .pvc-step {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 30px;
+  flex: none;
+  border: 1px solid var(--pvc-neutral-800);
+  border-radius: var(--pvc-radius-md);
+  background: transparent;
+  color: var(--pvc-neutral-400);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+#pvc-overlay .pvc-step svg { width: 14px; height: 14px; }
+#pvc-overlay .pvc-step:hover,
+#pvc-overlay .pvc-step:focus-visible { background: rgba(233, 233, 237, 0.08); }
+
+#pvc-overlay .pvc-step.pvc-accent {
+  border-color: var(--pvc-accent);
+  color: var(--pvc-accent);
+}
+
+#pvc-overlay .pvc-step.pvc-accent:hover,
+#pvc-overlay .pvc-step.pvc-accent:focus-visible { background: rgba(145, 132, 217, 0.12); }
+#pvc-overlay .pvc-step.pvc-accent:active { background: rgba(145, 132, 217, 0.24); }
+
+#pvc-overlay .pvc-step[disabled] {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+#pvc-overlay .pvc-set {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 30px;
+  padding: 0 8px;
+  font: 400 13px/1 var(--pvc-font);
+  color: var(--pvc-text);
+  background: var(--pvc-surface-2);
+  border: 1px solid var(--pvc-neutral-800);
+  border-radius: var(--pvc-radius-md);
+  outline: none;
+}
+
+#pvc-overlay .pvc-set::placeholder { color: var(--pvc-neutral-700); }
+#pvc-overlay .pvc-set:focus { border-color: var(--pvc-accent); }
+
+/* --- Footer ---------------------------------------------------------- */
+
+#pvc-overlay .pvc-footer {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-top: 8px;
+  border-top: 1px solid var(--pvc-hairline);
+  font: 400 10.5px/1.5 var(--pvc-font);
+  color: var(--pvc-neutral-600);
+}
+
+#pvc-overlay .pvc-status {
+  font: 400 9.5px/1 var(--pvc-mono);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--pvc-neutral-600);
+  white-space: nowrap;
+}
+
+#pvc-overlay .pvc-status-won { color: var(--pvc-accent-300); }
+#pvc-overlay .pvc-status-lost { color: var(--pvc-danger); }
+
+#pvc-overlay .pvc-log-delta { color: var(--pvc-accent-300); font-family: var(--pvc-mono); }
+#pvc-overlay .pvc-counter-failure ~ .pvc-footer .pvc-log-delta { color: var(--pvc-accent-300); }
+
+#pvc-overlay .pvc-log-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#pvc-overlay .pvc-log-time {
+  margin-left: auto;
+  font-family: var(--pvc-mono);
+  white-space: nowrap;
+}
+
+/* --- Resolved states -------------------------------------------------- */
+
+#pvc-overlay.pvc-won .pvc-panel-surface {
+  animation: pvcGlow 3.6s ease-in-out infinite;
+}
+
+#pvc-overlay.pvc-lost .pvc-panel-surface {
+  box-shadow: 0 0 0 1px var(--pvc-danger), 0 6px 18px rgba(0, 0, 0, 0.55);
+}
+
+/* --------------------------------------------------------------------------
+   Collapsed compact bar (1e)
+   -------------------------------------------------------------------------- */
+
+#pvc-overlay .pvc-compact {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 244px;
+  height: 30px;
+  padding: 0 9px;
+  border-radius: var(--pvc-radius-md);
+  background: rgba(35, 37, 50, 0.94);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--pvc-shadow);
+  cursor: grab;
+}
+
+#pvc-overlay.pvc-dragging .pvc-compact { cursor: grabbing; }
+
+#pvc-overlay .pvc-compact-kicker {
+  font: 400 9.5px/1 var(--pvc-font);
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--pvc-neutral-600);
+  flex: none;
+}
+
+#pvc-overlay .pvc-compact-value {
+  font: 500 14px/1 var(--pvc-font);
+  color: var(--pvc-text);
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+
+#pvc-overlay .pvc-compact-target {
+  font: 400 10px/1 var(--pvc-font);
+  color: var(--pvc-neutral-600);
+  flex: none;
+}
+
+#pvc-overlay .pvc-compact-track {
+  flex: 1;
+  min-width: 0;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--pvc-neutral-900);
+  overflow: hidden;
+}
+
+#pvc-overlay .pvc-compact-fill {
+  height: 100%;
+  background: var(--pvc-accent);
+  transition: width 220ms ease;
+}
+
+#pvc-overlay .pvc-compact-divider {
+  width: 1px;
+  height: 12px;
+  background: var(--pvc-divider);
+  flex: none;
+}
+
+#pvc-overlay .pvc-compact-failures {
+  font: 400 10px/1 var(--pvc-mono);
+  letter-spacing: 0.06em;
+  color: var(--pvc-neutral-500);
+  flex: none;
+}
+
+#pvc-overlay.pvc-lost .pvc-compact-failures { color: var(--pvc-danger); }
+#pvc-overlay.pvc-won .pvc-compact { animation: pvcGlow 3.6s ease-in-out infinite; }
+
+#pvc-overlay .pvc-ghost-btn {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border-radius: var(--pvc-radius-sm);
+  color: var(--pvc-neutral-500);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+#pvc-overlay .pvc-ghost-btn svg { width: 11px; height: 11px; }
+#pvc-overlay .pvc-ghost-btn:hover,
+#pvc-overlay .pvc-ghost-btn:focus-visible { background: rgba(233, 233, 237, 0.1); }
+
+/* --------------------------------------------------------------------------
+   GM control panel — Nocturne inside a standard Foundry window
+   -------------------------------------------------------------------------- */
+
+.pvc-panel .window-content,
+.application.pvc-panel .window-content {
+  background: var(--pvc-bg);
+  color: var(--pvc-text);
+  font-family: var(--pvc-font);
+}
+
+.pvc-panel .pvc-panel-status {
+  margin-bottom: 10px;
+  padding: 9px 11px;
+  border-radius: var(--pvc-radius-md);
+  background: var(--pvc-surface);
+  box-shadow: 0 0 0 1px var(--pvc-neutral-800);
+}
+
+.pvc-panel .pvc-panel-status-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--pvc-text);
+}
+
+.pvc-panel .pvc-panel-status-counts {
+  display: flex;
+  gap: 16px;
+  margin-top: 5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--pvc-neutral-400);
+  font-size: 12.5px;
+}
+
+.pvc-panel .pvc-badge {
+  padding: 2px 9px;
+  border-radius: 99px;
+  font: 500 9.5px/1.6 var(--pvc-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid currentcolor;
+}
+
+.pvc-panel .pvc-badge-running { color: var(--pvc-neutral-500); }
+.pvc-panel .pvc-badge-won { color: var(--pvc-accent-300); }
+.pvc-panel .pvc-badge-lost { color: var(--pvc-danger); }
+
+.pvc-panel .notes,
+.pvc-panel .hint {
+  color: var(--pvc-neutral-600);
+  font-size: 11.5px;
+}
+
+.pvc-panel fieldset {
+  border: 1px solid var(--pvc-neutral-800);
+  border-radius: var(--pvc-radius-md);
+  padding: 4px 11px 11px;
+  margin-bottom: 10px;
+}
+
+.pvc-panel legend {
+  padding: 0 6px;
+  font: 500 9.5px/1 var(--pvc-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pvc-neutral-500);
+}
+
+.pvc-panel label { color: var(--pvc-neutral-400); }
+
+.pvc-panel input[type="text"],
+.pvc-panel input[type="number"] {
+  color: var(--pvc-text);
+  background: var(--pvc-surface-2);
+  border: 1px solid var(--pvc-neutral-800);
+  border-radius: var(--pvc-radius-md);
+}
+
+.pvc-panel input[type="text"]:focus,
+.pvc-panel input[type="number"]:focus {
+  border-color: var(--pvc-accent);
+  box-shadow: none;
+  outline: none;
+}
+
+.pvc-panel .pvc-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+}
+
+.pvc-panel .pvc-stepper-label {
+  flex: 1 1 auto;
+  font: 400 10px/1 var(--pvc-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pvc-neutral-500);
+}
+
+.pvc-panel .pvc-stepper-value {
+  min-width: 76px;
+  text-align: center;
+  font: 500 15px/1 var(--pvc-font);
+  font-variant-numeric: tabular-nums;
+  color: var(--pvc-text);
+}
+
+.pvc-panel button {
+  font: 500 11.5px/1 var(--pvc-font);
+  color: var(--pvc-neutral-400);
+  background: transparent;
+  border: 1px solid var(--pvc-neutral-800);
+  border-radius: var(--pvc-radius-md);
+  cursor: pointer;
+  transition: background-color 120ms ease;
+}
+
+.pvc-panel button:hover:not([disabled]) { background: rgba(233, 233, 237, 0.08); }
+
+.pvc-panel .pvc-stepper button {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 28px;
+  color: var(--pvc-accent);
+  border-color: var(--pvc-accent);
+}
+
+.pvc-panel .pvc-stepper button:hover { background: rgba(145, 132, 217, 0.12); }
+
+.pvc-panel .pvc-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 11px;
+}
+
+.pvc-panel .pvc-panel-actions button {
+  flex: 1 1 auto;
+  height: 28px;
+}
+
+.pvc-panel .pvc-primary {
+  color: var(--pvc-accent);
+  border-color: var(--pvc-accent);
+}
+
+.pvc-panel .pvc-primary:hover { background: rgba(145, 132, 217, 0.12); }
+
+.pvc-panel .pvc-danger {
+  color: var(--pvc-danger);
+  border-color: var(--pvc-danger);
+}
+
+.pvc-panel .pvc-danger:hover { background: rgba(194, 112, 95, 0.12); }
+
+.pvc-panel button[disabled] { opacity: 0.4; cursor: default; }
+
+/* --------------------------------------------------------------------------
+   Chat card — sits in Foundry's own chat log, so it stays light-touch
+   -------------------------------------------------------------------------- */
+
+.pvc-chat-card .pvc-chat-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font: 500 9.5px/1.6 var(--pvc-mono, ui-monospace, monospace);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+  padding-bottom: 4px;
+  margin-bottom: 5px;
+}
+
+.pvc-chat-card .pvc-chat-reason {
+  margin: 0 0 5px;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.pvc-chat-card .pvc-chat-counts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pvc-chat-card .pvc-chat-counts li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pvc-chat-card .pvc-chat-delta { opacity: 0.7; }
+
+.pvc-chat-card .pvc-chat-result {
+  margin-top: 6px;
+  padding: 3px 0;
+  text-align: center;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-radius: var(--pvc-radius-sm, 4px);
+}
+
+.pvc-chat-card.pvc-won .pvc-chat-result {
+  background: rgba(145, 132, 217, 0.18);
+  border: 1px solid #9184d9;
+}
+
+.pvc-chat-card.pvc-lost .pvc-chat-result {
+  background: rgba(194, 112, 95, 0.18);
+  border: 1px solid #c2705f;
+}

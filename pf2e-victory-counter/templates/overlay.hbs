@@ -1,0 +1,169 @@
+{{!--
+  Victory Points HUD — layout 1a ("party total, by-the-book panel") from the
+  Nocturne design, adapted to two counters. Collapsed state uses the 1e
+  compact bar. Icons are Phosphor, inline on currentColor.
+
+  GM-only affordances are marked with the accent; everything a player sees is
+  plain. Rendered frameless; placement is CSS + the drag handler in overlay.js.
+--}}
+
+{{#if collapsed}}
+
+{{!-- ---------- Collapsed: compact bar (1e) ---------- --}}
+<div class="pvc-compact" data-drag-handle>
+  <span class="pvc-compact-kicker">{{localize "PVC.Abbrev"}}</span>
+  <span class="pvc-compact-value">{{challenge.successes}}</span>
+  <span class="pvc-compact-target">/ {{challenge.requiredSuccesses}}</span>
+  <div class="pvc-compact-track">
+    <div class="pvc-compact-fill" style="width: {{successPercent}}%"></div>
+  </div>
+  {{#if challenge.trackFailures}}
+  <span class="pvc-compact-divider"></span>
+  <span class="pvc-compact-failures" data-tooltip="{{localize 'PVC.Failures'}}">
+    {{challenge.failures}}/{{challenge.requiredFailures}}
+  </span>
+  {{/if}}
+  <button type="button" class="pvc-ghost-btn" data-action="toggleCollapse"
+          data-tooltip="{{localize 'PVC.Overlay.Expand'}}"
+          aria-label="{{localize 'PVC.Overlay.Expand'}}">
+    <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"/></svg>
+  </button>
+</div>
+
+{{else}}
+
+{{!-- ---------- Expanded: full panel (1a) ---------- --}}
+<div class="pvc-panel-surface">
+
+  <div class="pvc-chrome" data-drag-handle>
+    <span class="pvc-grip" aria-hidden="true">
+      <span></span><span></span><span></span><span></span><span></span><span></span>
+    </span>
+
+    <span class="pvc-chrome-title">{{displayTitle}}</span>
+
+    {{#if isGM}}
+    <button type="button"
+            class="pvc-chrome-btn pvc-accent{{#unless challenge.visibleToPlayers}} pvc-off{{/unless}}"
+            data-action="togglePlayerVisibility"
+            data-tooltip="{{#if challenge.visibleToPlayers}}{{localize 'PVC.Overlay.VisibleToPlayers'}}{{else}}{{localize 'PVC.Overlay.HiddenFromPlayers'}}{{/if}}"
+            aria-label="{{#if challenge.visibleToPlayers}}{{localize 'PVC.Overlay.VisibleToPlayers'}}{{else}}{{localize 'PVC.Overlay.HiddenFromPlayers'}}{{/if}}">
+      <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z"/></svg>
+    </button>
+
+    <button type="button" class="pvc-chrome-btn pvc-accent" data-action="openPanel"
+            data-tooltip="{{localize 'PVC.Overlay.OpenPanel'}}"
+            aria-label="{{localize 'PVC.Overlay.OpenPanel'}}">
+      <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M40,88H73a32,32,0,0,0,62,0h81a8,8,0,0,0,0-16H135a32,32,0,0,0-62,0H40a8,8,0,0,0,0,16Zm64-24A16,16,0,1,1,88,80,16,16,0,0,1,104,64ZM216,168H199a32,32,0,0,0-62,0H40a8,8,0,0,0,0,16h97a32,32,0,0,0,62,0h17a8,8,0,0,0,0-16Zm-48,24a16,16,0,1,1,16-16A16,16,0,0,1,168,192Z"/></svg>
+    </button>
+    {{/if}}
+
+    <button type="button" class="pvc-chrome-btn" data-action="toggleCollapse"
+            data-tooltip="{{localize 'PVC.Overlay.Collapse'}}"
+            aria-label="{{localize 'PVC.Overlay.Collapse'}}">
+      <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M213.66,165.66a8,8,0,0,1-11.32,0L128,91.31,53.66,165.66a8,8,0,0,1-11.32-11.32l80-80a8,8,0,0,1,11.32,0l80,80A8,8,0,0,1,213.66,165.66Z"/></svg>
+    </button>
+
+    <button type="button" class="pvc-chrome-btn" data-action="hideOverlay"
+            data-tooltip="{{localize 'PVC.Overlay.Hide'}}"
+            aria-label="{{localize 'PVC.Overlay.Hide'}}">
+      <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"/></svg>
+    </button>
+  </div>
+
+  <div class="pvc-body">
+
+    {{!-- ===== Successes ===== --}}
+    <div class="pvc-counter pvc-counter-success">
+      <div class="pvc-readout">
+        <div class="pvc-figure">
+          <span class="pvc-figure-value">{{challenge.successes}}</span>
+          <span class="pvc-figure-target">/ {{challenge.requiredSuccesses}}</span>
+        </div>
+        <span class="pvc-kicker">{{localize "PVC.Successes"}}</span>
+      </div>
+
+      <div class="pvc-track">
+        <div class="pvc-track-fill" style="width: {{successPercent}}%"></div>
+      </div>
+
+      {{#if isGM}}
+      <div class="pvc-controls">
+        <button type="button" class="pvc-step pvc-accent" data-action="adjustTrack"
+                data-track="successes" data-delta="-1"
+                data-tooltip="{{localize 'PVC.Panel.RemoveSuccess'}}"
+                aria-label="{{localize 'PVC.Panel.RemoveSuccess'}}">
+          <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128Z"/></svg>
+        </button>
+        <button type="button" class="pvc-step pvc-accent" data-action="adjustTrack"
+                data-track="successes" data-delta="1"
+                data-tooltip="{{localize 'PVC.Panel.AddSuccess'}}"
+                aria-label="{{localize 'PVC.Panel.AddSuccess'}}">
+          <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"/></svg>
+        </button>
+        <input type="text" class="pvc-set" data-set-track="successes" inputmode="numeric"
+               placeholder="{{localize 'PVC.Overlay.SetPlaceholder'}}"
+               data-tooltip="{{localize 'PVC.Overlay.SetHint'}}"
+               aria-label="{{localize 'PVC.Overlay.SetHint'}}">
+        <button type="button" class="pvc-step" data-action="undoChange"
+                {{disabled (not canUndo)}}
+                data-tooltip="{{localize 'PVC.Panel.Undo'}}"
+                aria-label="{{localize 'PVC.Panel.Undo'}}">
+          <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M224,128a96,96,0,0,1-94.71,96H128A95.38,95.38,0,0,1,62.1,197.8a8,8,0,0,1,11-11.63A80,80,0,1,0,71.43,71.39a3.07,3.07,0,0,0-.26.25L44.59,96H72a8,8,0,0,1,0,16H32a8,8,0,0,1-8-8V64a8,8,0,0,1,16,0V85.8L60.25,60.31a1.55,1.55,0,0,1,.14-.13,96,96,0,0,1,163.61,68Z"/></svg>
+        </button>
+      </div>
+      {{/if}}
+    </div>
+
+    {{!-- ===== Failures ===== --}}
+    {{#if challenge.trackFailures}}
+    <div class="pvc-counter pvc-counter-failure">
+      <div class="pvc-readout">
+        <div class="pvc-figure">
+          <span class="pvc-figure-value">{{challenge.failures}}</span>
+          <span class="pvc-figure-target">/ {{challenge.requiredFailures}}</span>
+        </div>
+        <span class="pvc-kicker">{{localize "PVC.Failures"}}</span>
+      </div>
+
+      <div class="pvc-track">
+        <div class="pvc-track-fill" style="width: {{failurePercent}}%"></div>
+      </div>
+
+      {{#if isGM}}
+      <div class="pvc-controls">
+        <button type="button" class="pvc-step pvc-accent" data-action="adjustTrack"
+                data-track="failures" data-delta="-1"
+                data-tooltip="{{localize 'PVC.Panel.RemoveFailure'}}"
+                aria-label="{{localize 'PVC.Panel.RemoveFailure'}}">
+          <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128Z"/></svg>
+        </button>
+        <button type="button" class="pvc-step pvc-accent" data-action="adjustTrack"
+                data-track="failures" data-delta="1"
+                data-tooltip="{{localize 'PVC.Panel.AddFailure'}}"
+                aria-label="{{localize 'PVC.Panel.AddFailure'}}">
+          <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"/></svg>
+        </button>
+        <input type="text" class="pvc-set" data-set-track="failures" inputmode="numeric"
+               placeholder="{{localize 'PVC.Overlay.SetPlaceholder'}}"
+               data-tooltip="{{localize 'PVC.Overlay.SetHint'}}"
+               aria-label="{{localize 'PVC.Overlay.SetHint'}}">
+      </div>
+      {{/if}}
+    </div>
+    {{/if}}
+
+    {{!-- ===== Footer: status + last change ===== --}}
+    <div class="pvc-footer">
+      <span class="pvc-status pvc-status-{{challenge.status}}">{{statusLabel}}</span>
+      {{#if lastChange}}
+      <span class="pvc-log-delta">{{lastChange.label}}</span>
+      <span class="pvc-log-text">{{lastChange.track}}</span>
+      <span class="pvc-log-time">{{lastChange.time}}</span>
+      {{/if}}
+    </div>
+
+  </div>
+</div>
+
+{{/if}}
