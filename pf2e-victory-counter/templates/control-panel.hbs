@@ -4,136 +4,189 @@
 
 <div class="pvc-panel-body">
 
-<section class="pvc-panel-status {{#if challenge.active}}active{{/if}}">
-  {{#if challenge.active}}
-    <div class="pvc-panel-status-line">
-      <strong>{{#if challenge.title}}{{challenge.title}}{{else}}{{localize "PVC.DefaultTitle"}}{{/if}}</strong>
-      <span class="pvc-badge pvc-badge-{{challenge.status}}">{{statusLabel}}</span>
-    </div>
-    <div class="pvc-panel-status-counts">
-      <span><i class="fa-solid fa-circle-check" aria-hidden="true"></i>
-        {{localize "PVC.Successes"}}: {{challenge.successes}} / {{challenge.requiredSuccesses}}</span>
-      {{#if challenge.trackFailures}}
-      <span><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>
-        {{localize "PVC.Failures"}}: {{challenge.failures}} / {{challenge.requiredFailures}}</span>
-      {{/if}}
-    </div>
-    {{#unless challenge.visibleToPlayers}}
-    <p class="notes"><i class="fa-solid fa-eye-slash" aria-hidden="true"></i>
-      {{localize "PVC.Panel.HiddenNotice"}}</p>
-    {{/unless}}
-  {{else}}
-    <p class="notes">{{localize "PVC.Panel.NoChallenge"}}</p>
-  {{/if}}
-</section>
-
 <fieldset class="pvc-panel-config">
-  <legend>{{localize "PVC.Panel.SetupLegend"}}</legend>
+  <legend>{{localize "PVC.Panel.AddTrackLegend"}}</legend>
+
+  {{#if atMax}}
+  <p class="notes"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+    {{localize "PVC.Panel.MaxTracksReached"}}</p>
+  {{else}}
 
   <div class="form-group">
-    <label for="pvc-title">{{localize "PVC.Panel.ChallengeTitle"}}</label>
+    <label for="pvc-new-title">{{localize "PVC.Panel.TrackTitle"}}</label>
     <div class="form-fields">
-      <input type="text" id="pvc-title" name="title" value="{{challenge.title}}"
+      <input type="text" id="pvc-new-title" name="new-title"
              maxlength="{{limits.MAX_TITLE_LENGTH}}"
              placeholder="{{localize 'PVC.DefaultTitle'}}">
     </div>
-    <p class="hint">{{localize "PVC.Panel.ChallengeTitleHint"}}</p>
+    <p class="hint">{{localize "PVC.Panel.TrackTitleHint"}}</p>
   </div>
 
   <div class="form-group">
-    <label for="pvc-required-successes">{{localize "PVC.Panel.RequiredSuccesses"}}</label>
+    <label for="pvc-new-required-successes">{{localize "PVC.Panel.RequiredSuccesses"}}</label>
     <div class="form-fields">
-      <input type="number" id="pvc-required-successes" name="requiredSuccesses"
-             value="{{challenge.requiredSuccesses}}"
-             min="{{limits.MIN_REQUIRED}}" max="{{limits.MAX_REQUIRED}}" step="1">
+      <input type="number" id="pvc-new-required-successes" name="new-requiredSuccesses"
+             value="6" min="{{limits.MIN_REQUIRED}}" max="{{limits.MAX_REQUIRED}}" step="1">
     </div>
   </div>
 
   <div class="form-group">
-    <label for="pvc-track-failures">{{localize "PVC.Panel.TrackFailures"}}</label>
+    <label for="pvc-new-track-failures">{{localize "PVC.Panel.TrackFailures"}}</label>
     <div class="form-fields">
-      <input type="checkbox" id="pvc-track-failures" name="trackFailures" {{checked challenge.trackFailures}}>
+      <input type="checkbox" id="pvc-new-track-failures" name="new-trackFailures" checked>
     </div>
     <p class="hint">{{localize "PVC.Panel.TrackFailuresHint"}}</p>
   </div>
 
   <div class="form-group">
-    <label for="pvc-required-failures">{{localize "PVC.Panel.RequiredFailures"}}</label>
+    <label for="pvc-new-required-failures">{{localize "PVC.Panel.RequiredFailures"}}</label>
     <div class="form-fields">
-      <input type="number" id="pvc-required-failures" name="requiredFailures"
-             value="{{challenge.requiredFailures}}"
-             min="{{limits.MIN_REQUIRED}}" max="{{limits.MAX_REQUIRED}}" step="1">
+      <input type="number" id="pvc-new-required-failures" name="new-requiredFailures"
+             value="3" min="{{limits.MIN_REQUIRED}}" max="{{limits.MAX_REQUIRED}}" step="1">
     </div>
   </div>
 
   <div class="form-group">
-    <label for="pvc-visible">{{localize "PVC.Panel.VisibleToPlayers"}}</label>
+    <label for="pvc-new-visible">{{localize "PVC.Panel.VisibleToPlayers"}}</label>
     <div class="form-fields">
-      <input type="checkbox" id="pvc-visible" name="visibleToPlayers" {{checked challenge.visibleToPlayers}}>
+      <input type="checkbox" id="pvc-new-visible" name="new-visibleToPlayers" checked>
     </div>
     <p class="hint">{{localize "PVC.Panel.VisibleToPlayersHint"}}</p>
   </div>
 
   <footer class="pvc-panel-actions">
-    <button type="button" class="pvc-primary" data-action="startChallenge">
+    <button type="button" class="pvc-primary" data-action="addTrack">
       <i class="fa-solid fa-flag-checkered" aria-hidden="true"></i>
-      {{#if challenge.active}}{{localize "PVC.Panel.Restart"}}{{else}}{{localize "PVC.Panel.Start"}}{{/if}}
-    </button>
-    <button type="button" data-action="applyConfig" {{disabled (not challenge.active)}}>
-      <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
-      {{localize "PVC.Panel.Apply"}}
+      {{localize "PVC.Panel.AddTrack"}}
     </button>
   </footer>
+  {{/if}}
 </fieldset>
 
-{{#if challenge.active}}
-<fieldset class="pvc-panel-progress">
-  <legend>{{localize "PVC.Panel.ProgressLegend"}}</legend>
+<fieldset class="pvc-panel-tracks">
+  <legend>{{localize "PVC.Panel.TracksLegend"}}</legend>
 
-  <div class="pvc-stepper">
-    <span class="pvc-stepper-label">
-      <i class="fa-solid fa-circle-check" aria-hidden="true"></i> {{localize "PVC.Successes"}}
-    </span>
-    <button type="button" data-action="adjustTrack" data-track="successes" data-delta="-1"
-            aria-label="{{localize 'PVC.Panel.RemoveSuccess'}}">
-      <i class="fa-solid fa-minus" aria-hidden="true"></i>
-    </button>
-    <span class="pvc-stepper-value">{{challenge.successes}} / {{challenge.requiredSuccesses}}</span>
-    <button type="button" data-action="adjustTrack" data-track="successes" data-delta="1"
-            aria-label="{{localize 'PVC.Panel.AddSuccess'}}">
-      <i class="fa-solid fa-plus" aria-hidden="true"></i>
-    </button>
-  </div>
+  {{#unless tracks.length}}
+  <p class="notes">{{localize "PVC.Panel.NoTracks"}}</p>
+  {{/unless}}
 
-  {{#if challenge.trackFailures}}
-  <div class="pvc-stepper">
-    <span class="pvc-stepper-label">
-      <i class="fa-solid fa-circle-xmark" aria-hidden="true"></i> {{localize "PVC.Failures"}}
-    </span>
-    <button type="button" data-action="adjustTrack" data-track="failures" data-delta="-1"
-            aria-label="{{localize 'PVC.Panel.RemoveFailure'}}">
-      <i class="fa-solid fa-minus" aria-hidden="true"></i>
-    </button>
-    <span class="pvc-stepper-value">{{challenge.failures}} / {{challenge.requiredFailures}}</span>
-    <button type="button" data-action="adjustTrack" data-track="failures" data-delta="1"
-            aria-label="{{localize 'PVC.Panel.AddFailure'}}">
-      <i class="fa-solid fa-plus" aria-hidden="true"></i>
-    </button>
+  {{#each tracks}}
+  <div class="pvc-track-row" data-id="{{id}}">
+    <div class="pvc-panel-status-line">
+      <span class="pvc-badge pvc-badge-{{status}}">{{statusLabel}}</span>
+      {{#unless visibleToPlayers}}
+      <i class="fa-solid fa-eye-slash" data-tooltip="{{localize 'PVC.Panel.HiddenNotice'}}" aria-hidden="true"></i>
+      {{/unless}}
+      <div class="pvc-row-move">
+        <button type="button" data-action="moveTrack" data-id="{{id}}" data-direction="-1"
+                aria-label="{{localize 'PVC.Panel.MoveUp'}}">
+          <i class="fa-solid fa-chevron-up" aria-hidden="true"></i>
+        </button>
+        <button type="button" data-action="moveTrack" data-id="{{id}}" data-direction="1"
+                aria-label="{{localize 'PVC.Panel.MoveDown'}}">
+          <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>{{localize "PVC.Panel.TrackTitle"}}</label>
+      <div class="form-fields">
+        <input type="text" name="title-{{id}}" value="{{title}}" maxlength="{{../limits.MAX_TITLE_LENGTH}}"
+               placeholder="{{localize 'PVC.DefaultTitle'}}">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>{{localize "PVC.Panel.RequiredSuccesses"}}</label>
+      <div class="form-fields">
+        <input type="number" name="requiredSuccesses-{{id}}" value="{{requiredSuccesses}}"
+               min="{{../limits.MIN_REQUIRED}}" max="{{../limits.MAX_REQUIRED}}" step="1">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>{{localize "PVC.Panel.TrackFailures"}}</label>
+      <div class="form-fields">
+        <input type="checkbox" name="trackFailures-{{id}}" {{checked trackFailures}}>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>{{localize "PVC.Panel.RequiredFailures"}}</label>
+      <div class="form-fields">
+        <input type="number" name="requiredFailures-{{id}}" value="{{requiredFailures}}"
+               min="{{../limits.MIN_REQUIRED}}" max="{{../limits.MAX_REQUIRED}}" step="1">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>{{localize "PVC.Panel.VisibleToPlayers"}}</label>
+      <div class="form-fields">
+        <input type="checkbox" name="visibleToPlayers-{{id}}" {{checked visibleToPlayers}}>
+      </div>
+    </div>
+
+    <footer class="pvc-panel-actions">
+      <button type="button" data-action="applyConfig" data-id="{{id}}">
+        <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+        {{localize "PVC.Panel.Apply"}}
+      </button>
+      <button type="button" data-action="toggleVisibility" data-id="{{id}}">
+        <i class="fa-solid {{#if visibleToPlayers}}fa-eye{{else}}fa-eye-slash{{/if}}" aria-hidden="true"></i>
+        {{localize "PVC.Panel.ToggleVisibility"}}
+      </button>
+    </footer>
+
+    <div class="pvc-stepper">
+      <span class="pvc-stepper-label">
+        <i class="fa-solid fa-circle-check" aria-hidden="true"></i> {{localize "PVC.Successes"}}
+      </span>
+      <button type="button" data-action="adjustTrack" data-id="{{id}}" data-track="successes" data-delta="-1"
+              aria-label="{{localize 'PVC.Panel.RemoveSuccess'}}">
+        <i class="fa-solid fa-minus" aria-hidden="true"></i>
+      </button>
+      <span class="pvc-stepper-value">{{successes}} / {{requiredSuccesses}}</span>
+      <button type="button" data-action="adjustTrack" data-id="{{id}}" data-track="successes" data-delta="1"
+              aria-label="{{localize 'PVC.Panel.AddSuccess'}}">
+        <i class="fa-solid fa-plus" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    {{#if trackFailures}}
+    <div class="pvc-stepper">
+      <span class="pvc-stepper-label">
+        <i class="fa-solid fa-circle-xmark" aria-hidden="true"></i> {{localize "PVC.Failures"}}
+      </span>
+      <button type="button" data-action="adjustTrack" data-id="{{id}}" data-track="failures" data-delta="-1"
+              aria-label="{{localize 'PVC.Panel.RemoveFailure'}}">
+        <i class="fa-solid fa-minus" aria-hidden="true"></i>
+      </button>
+      <span class="pvc-stepper-value">{{failures}} / {{requiredFailures}}</span>
+      <button type="button" data-action="adjustTrack" data-id="{{id}}" data-track="failures" data-delta="1"
+              aria-label="{{localize 'PVC.Panel.AddFailure'}}">
+        <i class="fa-solid fa-plus" aria-hidden="true"></i>
+      </button>
+    </div>
+    {{/if}}
+
+    <footer class="pvc-panel-actions">
+      <button type="button" data-action="resetCounts" data-id="{{id}}">
+        <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> {{localize "PVC.Panel.ResetCounts"}}
+      </button>
+      <button type="button" class="pvc-danger" data-action="removeTrack" data-id="{{id}}">
+        <i class="fa-solid fa-circle-stop" aria-hidden="true"></i> {{localize "PVC.Panel.End"}}
+      </button>
+    </footer>
   </div>
-  {{/if}}
+  {{/each}}
 
   <footer class="pvc-panel-actions">
     <button type="button" data-action="undoChange" {{disabled (not canUndo)}}>
       <i class="fa-solid fa-rotate-left" aria-hidden="true"></i> {{localize "PVC.Panel.Undo"}}
     </button>
-    <button type="button" data-action="resetCounts">
-      <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> {{localize "PVC.Panel.ResetCounts"}}
-    </button>
-    <button type="button" class="pvc-danger" data-action="endChallenge">
-      <i class="fa-solid fa-circle-stop" aria-hidden="true"></i> {{localize "PVC.Panel.End"}}
-    </button>
   </footer>
 </fieldset>
-{{/if}}
 
 </div>
+

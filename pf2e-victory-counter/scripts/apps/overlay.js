@@ -1,23 +1,23 @@
 /**
- * The shared Victory Points HUD every user sees.
+ * The shared Victory Points HUD every user sees, listing every track the
+ * current user is allowed to see as a stacked list of cards.
  *
  * Implemented as an ApplicationV2 with `window.frame = false` and
  * `window.positioned = false`, so Foundry renders the element but leaves
  * placement to CSS plus the drag handler below. Layout follows variant 1a of
  * the Nocturne "Victory Points HUD" design, with the 1e compact bar as the
- * collapsed state.
+ * collapsed state, repeated once per track.
  *
  * @module pf2e-victory-counter/apps/overlay
  */
 
-import { MODULE_ID, OVERLAY_POSITIONS, SETTINGS, STATUS, clampInt, log } from "../constants.js";
+import { MODULE_ID, OVERLAY_POSITIONS, SETTINGS, clampInt, log } from "../constants.js";
 import {
-  adjust,
-  canUserSee,
-  getChallenge,
+  adjustTrack,
+  getVisibleTracks,
   hasUndo,
-  setCounts,
-  togglePlayerVisibility,
+  setTrackCounts,
+  toggleTrackVisibility,
   undo
 } from "../state.js";
 
@@ -48,7 +48,7 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
       hideOverlay: this.onHideOverlay,
       openPanel: this.onOpenPanel,
       adjustTrack: this.onAdjustTrack,
-      togglePlayerVisibility: this.onTogglePlayerVisibility,
+      toggleTrackVisibility: this.onToggleTrackVisibility,
       undoChange: this.onUndoChange
     }
   };
@@ -64,29 +64,32 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
 
   /** @override */
   async _prepareContext(_options) {
-    const challenge = getChallenge();
+    const isGM = game.user.isGM;
     const collapsed = game.settings.get(MODULE_ID, SETTINGS.OVERLAY_COLLAPSED) === true;
+    const tracks = getVisibleTracks().map((track) => ({
+      ...track,
+      displayTitle: track.title || game.i18n.localize("PVC.DefaultTitle"),
+      successPercent: percent(track.successes, track.requiredSuccesses),
+      failurePercent: percent(track.failures, track.requiredFailures),
+      statusLabel: game.i18n.localize(`PVC.Status.${track.status}`),
+      lastChange: this.#formatLastChange(track)
+    }));
 
     return {
-      challenge,
+      tracks,
       collapsed,
-      isGM: game.user.isGM,
-      canUndo: hasUndo(),
-      displayTitle: challenge.title || game.i18n.localize("PVC.DefaultTitle"),
-      successPercent: percent(challenge.successes, challenge.requiredSuccesses),
-      failurePercent: percent(challenge.failures, challenge.requiredFailures),
-      statusLabel: game.i18n.localize(`PVC.Status.${challenge.status}`),
-      lastChange: this.#formatLastChange(challenge)
+      isGM,
+      canUndo: hasUndo()
     };
   }
 
   /**
-   * Format the footer log line, or null when nothing has been recorded yet.
-   * @param {object} challenge
+   * Format a track's footer log line, or null when nothing has been recorded yet.
+   * @param {object} track
    * @returns {{label: string, track: string, time: string}|null}
    */
-  #formatLastChange(challenge) {
-    const change = challenge.lastChange;
+  #formatLastChange(track) {
+    const change = track.lastChange;
     if (!change?.track || !change.delta || !change.time) return null;
     return {
       label: change.delta > 0 ? `+${change.delta}` : String(change.delta),
@@ -150,11 +153,8 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
    * @param {object} context
    */
   #applyStatusClasses(el, context) {
-    el.classList.remove("pvc-running", "pvc-won", "pvc-lost");
-    el.classList.add(`pvc-${context.challenge.status}`);
     el.classList.toggle("pvc-collapsed", context.collapsed);
     el.classList.toggle("pvc-gm", context.isGM);
-    el.classList.toggle("pvc-resolved", context.challenge.status !== STATUS.RUNNING);
   }
 
   /**
@@ -231,10 +231,12 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
           return;
         }
 
-        const challenge = getChallenge();
-        const track = input.dataset.setTrack;
-        if (track === "failures") await setCounts(challenge.successes, value);
-        else await setCounts(value, challenge.failures);
+        const id = input.dataset.id;
+        const track = getVisibleTracks().find((t) => t.id === id);
+        if (!track) return;
+        const key = input.dataset.setTrack;
+        if (key === "failures") await setTrackCounts(id, track.successes, value);
+        else await setTrackCounts(id, value, track.failures);
       });
     }
   }
@@ -281,16 +283,18 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
     if (!game.user.isGM) return;
     const delta = Number(target.dataset.delta);
     if (!Number.isFinite(delta)) return;
-    await adjust(target.dataset.track, delta);
+    await adjustTrack(target.dataset.id, target.dataset.track, delta);
   }
 
   /**
-   * GM toggle for whether players can see the HUD at all.
+   * GM toggle for whether players can see a specific track.
    * @this {VictoryCounterOverlay}
+   * @param {PointerEvent} event
+   * @param {HTMLElement}  target
    */
-  static async onTogglePlayerVisibility() {
+  static async onToggleTrackVisibility(event, target) {
     if (!game.user.isGM) return;
-    await togglePlayerVisibility();
+    await toggleTrackVisibility(target.dataset.id);
   }
 
   /**
@@ -314,7 +318,7 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
    */
   static shouldDisplay() {
     if (game.settings.get(MODULE_ID, SETTINGS.OVERLAY_HIDDEN) === true) return false;
-    return canUserSee();
+    return getVisibleTracks().length > 0;
   }
 
   /**
@@ -352,8 +356,8 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
    * @returns {Promise<void>}
    */
   static async toggleVisibility() {
-    if (!canUserSee()) {
-      ui.notifications.info(game.i18n.localize("PVC.Notify.NoChallenge"));
+    if (getVisibleTracks().length === 0) {
+      ui.notifications.info(game.i18n.localize("PVC.Notify.NoTrack"));
       return;
     }
     const hidden = game.settings.get(MODULE_ID, SETTINGS.OVERLAY_HIDDEN) === true;

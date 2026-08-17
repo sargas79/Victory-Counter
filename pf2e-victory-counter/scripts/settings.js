@@ -4,7 +4,6 @@
  */
 
 import {
-  DEFAULT_CHALLENGE,
   MODULE_ID,
   OVERLAY_POSITIONS,
   SETTINGS,
@@ -16,7 +15,7 @@ import {
  *
  * Data safety note: the module stores *only* these settings. It never creates,
  * updates or deletes Actors, Items, Scenes, Journals or any other world
- * document, so "uninstall cleanup" is limited to clearing the challenge.
+ * document, so "uninstall cleanup" is limited to clearing the tracks.
  *
  * @param {() => void} onStateChange Invoked on every client when shared state changes.
  * @param {() => void} onLocalChange Invoked on the local client when a display preference changes.
@@ -24,14 +23,14 @@ import {
 export function registerSettings(onStateChange, onLocalChange) {
   // --- Shared state (world scope, hidden from the settings menu) ----------
 
-  game.settings.register(MODULE_ID, SETTINGS.CHALLENGE, {
-    name: "PVC.Settings.Challenge.Name",
+  game.settings.register(MODULE_ID, SETTINGS.TRACKS, {
+    name: "PVC.Settings.Tracks.Name",
     scope: "world",
     config: false,
-    type: Object,
-    default: foundry.utils.deepClone(DEFAULT_CHALLENGE),
+    type: Array,
+    default: [],
     onChange: () => {
-      log("Challenge setting changed; refreshing overlay.");
+      log("Tracks setting changed; refreshing overlay.");
       onStateChange();
     }
   });

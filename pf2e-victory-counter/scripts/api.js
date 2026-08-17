@@ -10,64 +10,79 @@ import { MODULE_ID } from "./constants.js";
 import { VictoryCounterPanel } from "./apps/control-panel.js";
 import { VictoryCounterOverlay } from "./apps/overlay.js";
 import {
-  adjust,
-  clearChallenge,
-  getChallenge,
+  adjustTrack,
+  createTrack,
+  getTrack,
+  getTracks,
   hasUndo,
-  resetCounts,
-  setCounts,
-  startChallenge,
+  moveTrack,
+  removeTrack,
+  resetTrackCounts,
+  setTrackCounts,
+  toggleTrackVisibility,
   undo,
-  updateConfig
+  updateTrackConfig
 } from "./state.js";
 
 /**
  * @typedef {object} VictoryCounterAPI
- * @property {() => object}                       getChallenge
- * @property {(config: object) => Promise<object|null>} start
- * @property {(config: object) => Promise<object|null>} configure
- * @property {(delta?: number) => Promise<object|null>} addSuccess
- * @property {(delta?: number) => Promise<object|null>} addFailure
- * @property {(s: number, f: number) => Promise<object|null>} setCounts
- * @property {() => Promise<object|null>}          reset
- * @property {() => Promise<object|null>}          end
- * @property {() => Promise<object|null>}          undo
- * @property {() => boolean}                       canUndo
- * @property {() => Promise<void>}                 openPanel
- * @property {() => Promise<void>}                 showOverlay
- * @property {() => Promise<void>}                 toggleOverlay
+ * @property {() => object[]}                                  getTracks
+ * @property {(id: string) => object|null}                     getTrack
+ * @property {(config: object) => Promise<object|null>}        create
+ * @property {(id: string, config: object) => Promise<object|null>} configure
+ * @property {(id: string, delta?: number) => Promise<object|null>} addSuccess
+ * @property {(id: string, delta?: number) => Promise<object|null>} addFailure
+ * @property {(id: string, s: number, f: number) => Promise<object|null>} setCounts
+ * @property {(id: string) => Promise<object|null>}             reset
+ * @property {(id: string) => Promise<object[]|null>}           end
+ * @property {(id: string) => Promise<object|null>}             toggleVisibility
+ * @property {(id: string, direction: -1|1) => Promise<object[]|null>} move
+ * @property {() => Promise<object[]|null>}                     undo
+ * @property {() => boolean}                                    canUndo
+ * @property {() => Promise<void>}                              openPanel
+ * @property {() => Promise<void>}                               showOverlay
+ * @property {() => Promise<void>}                              toggleOverlay
  */
 
 /** @type {VictoryCounterAPI} */
 export const api = {
-  /** The current challenge state (sanitized copy). */
-  getChallenge: () => getChallenge(),
+  /** All tracks (sanitized copies), in display order. */
+  getTracks: () => getTracks(),
+
+  /** A single track by id, or null. */
+  getTrack: (id) => getTrack(id),
 
   /**
-   * Start a new challenge, resetting counts to zero.
+   * Create a new track.
    * @param {object} config `{title, requiredSuccesses, requiredFailures, trackFailures, visibleToPlayers}`
    */
-  start: (config = {}) => startChallenge(config),
+  create: (config = {}) => createTrack(config),
 
-  /** Change configuration of the running challenge without resetting counts. */
-  configure: (config = {}) => updateConfig(config),
+  /** Change configuration of a track without resetting its counts. */
+  configure: (id, config = {}) => updateTrackConfig(id, config),
 
-  /** @param {number} [delta=1] */
-  addSuccess: (delta = 1) => adjust("successes", delta),
+  /** @param {string} id @param {number} [delta=1] */
+  addSuccess: (id, delta = 1) => adjustTrack(id, "successes", delta),
 
-  /** @param {number} [delta=1] */
-  addFailure: (delta = 1) => adjust("failures", delta),
+  /** @param {string} id @param {number} [delta=1] */
+  addFailure: (id, delta = 1) => adjustTrack(id, "failures", delta),
 
-  /** @param {number} successes @param {number} failures */
-  setCounts: (successes, failures) => setCounts(successes, failures),
+  /** @param {string} id @param {number} successes @param {number} failures */
+  setCounts: (id, successes, failures) => setTrackCounts(id, successes, failures),
 
-  /** Zero both counts, keeping the challenge running. */
-  reset: () => resetCounts(),
+  /** Zero a track's counts, keeping it running. */
+  reset: (id) => resetTrackCounts(id),
 
-  /** End the challenge and clear it from all screens. */
-  end: () => clearChallenge(),
+  /** Remove a track and clear it from all screens. */
+  end: (id) => removeTrack(id),
 
-  /** Restore the single-level undo snapshot. */
+  /** Flip whether players can see a specific track. */
+  toggleVisibility: (id) => toggleTrackVisibility(id),
+
+  /** Reorder a track up (-1) or down (1). */
+  move: (id, direction) => moveTrack(id, direction),
+
+  /** Restore the single-level undo snapshot for the whole track list. */
   undo: () => undo(),
 
   /** @returns {boolean} */

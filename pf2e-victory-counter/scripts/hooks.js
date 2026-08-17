@@ -10,11 +10,11 @@ import { MODULE_ID, STATUS, log, logError, warn } from "./constants.js";
 import { VictoryCounterPanel } from "./apps/control-panel.js";
 import { VictoryCounterOverlay } from "./apps/overlay.js";
 import { exposeApi } from "./api.js";
-import { getChallenge } from "./state.js";
+import { getTracks } from "./state.js";
 import { registerSettings } from "./settings.js";
 
-/** Tracks the last status this client rendered, so resolutions announce once. */
-let lastKnownStatus = null;
+/** Tracks the last status rendered per track id, so resolutions announce once. */
+const lastKnownStatus = new Map();
 
 /* -------------------------------------------- */
 /*  Refresh                                     */
@@ -24,21 +24,35 @@ let lastKnownStatus = null;
  * Bring every piece of this client's UI in line with the current shared state.
  * Called on setting changes (shared and local) and on `ready`.
  * @param {object} [options]
- * @param {boolean} [options.announce=true] Show a notification when the challenge resolves.
+ * @param {boolean} [options.announce=true] Show a notification when a track resolves.
  * @returns {Promise<void>}
  */
 export async function refreshUI({ announce = true } = {}) {
   try {
-    const challenge = getChallenge();
+    const tracks = getTracks();
+    const seenIds = new Set();
 
-    if (announce && challenge.active && challenge.status !== lastKnownStatus) {
-      if (challenge.status === STATUS.WON) {
-        ui.notifications.info(game.i18n.localize("PVC.Notify.Won"));
-      } else if (challenge.status === STATUS.LOST) {
-        ui.notifications.warn(game.i18n.localize("PVC.Notify.Lost"));
+    for (const track of tracks) {
+      seenIds.add(track.id);
+      const previousStatus = lastKnownStatus.get(track.id);
+      if (announce && track.active && track.status !== previousStatus) {
+        if (track.status === STATUS.WON) {
+          ui.notifications.info(
+            game.i18n.format("PVC.Notify.Won", { title: track.title || game.i18n.localize("PVC.DefaultTitle") })
+          );
+        } else if (track.status === STATUS.LOST) {
+          ui.notifications.warn(
+            game.i18n.format("PVC.Notify.Lost", { title: track.title || game.i18n.localize("PVC.DefaultTitle") })
+          );
+        }
       }
+      lastKnownStatus.set(track.id, track.active ? track.status : undefined);
     }
-    lastKnownStatus = challenge.active ? challenge.status : null;
+
+    // Drop bookkeeping for tracks that no longer exist.
+    for (const id of lastKnownStatus.keys()) {
+      if (!seenIds.has(id)) lastKnownStatus.delete(id);
+    }
 
     await VictoryCounterOverlay.refresh();
     await VictoryCounterPanel.refresh();

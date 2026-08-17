@@ -1,8 +1,8 @@
 {
   "id": "pf2e-victory-counter",
   "title": "PF2e Victory Counter",
-  "description": "A shared, always-visible Victory Point counter for Pathfinder 2e Remaster subsystem challenges. The GM initializes a challenge, sets the required successes (and optional failure threshold), and adjusts progress live. Every player sees the same state on screen.",
-  "version": "1.0.1",
+  "description": "Shared, always-visible progress tracks for Pathfinder 2e Remaster subsystem challenges. The GM creates any number of named tracks (e.g. Infiltration Points, Guard Awareness, Doomsday Device Activation), each with its own successes/failures totals, thresholds, and player visibility. Every player sees the same live state on screen.",
+  "version": "2.0.0",
   "authors": [
     {
       "name": "Diego Vescovini",

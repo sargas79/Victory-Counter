@@ -1,37 +1,40 @@
 /**
- * Challenge state: read, sanitize, mutate, and announce.
+ * Track state: read, sanitize, mutate, and announce.
  *
- * All shared state lives in a single world-scoped setting. Foundry broadcasts
- * world setting updates to every connected client and fires the setting's
- * `onChange` handler there, which is how player screens stay in sync without a
- * custom socket. Only a GM may write, which Foundry also enforces server-side.
+ * All shared state lives in a single world-scoped setting holding an array of
+ * tracks. Foundry broadcasts world setting updates to every connected client
+ * and fires the setting's `onChange` handler there, which is how player
+ * screens stay in sync without a custom socket. Only a GM may write, which
+ * Foundry also enforces server-side.
  *
  * @module pf2e-victory-counter/state
  */
 
 import {
-  DEFAULT_CHALLENGE,
+  DEFAULT_TRACK,
   LIMITS,
   MODULE_ID,
   SCHEMA_VERSION,
   SETTINGS,
   STATUS,
   clampInt,
+  generateId,
   log,
   logError
 } from "./constants.js";
 
 /**
- * @typedef {object} Challenge
+ * @typedef {object} Track
  * @property {number}  schema             Persisted schema version.
- * @property {boolean} active             Whether a challenge is currently running.
- * @property {string}  title              GM-supplied challenge name.
+ * @property {string}  id                 Stable identifier for this track.
+ * @property {boolean} active             Whether the track is currently running.
+ * @property {string}  title              GM-supplied track name.
  * @property {number}  successes          Current successes.
  * @property {number}  failures           Current failures.
  * @property {number}  requiredSuccesses  Successes needed to win.
- * @property {number}  requiredFailures   Failures that end the challenge in defeat.
- * @property {boolean} trackFailures      Whether the failure track is used at all.
- * @property {boolean} visibleToPlayers   Whether non-GM users may see the counter.
+ * @property {number}  requiredFailures   Failures that end the track in defeat.
+ * @property {boolean} trackFailures      Whether the failure count is used at all.
+ * @property {boolean} visibleToPlayers   Whether non-GM users may see this track.
  * @property {string}  status             One of STATUS.
  */
 
@@ -40,14 +43,14 @@ import {
 /* -------------------------------------------- */
 
 /**
- * Coerce arbitrary stored data into a valid Challenge.
+ * Coerce arbitrary stored data into a valid Track.
  * Unknown keys are dropped, missing keys are backfilled from the defaults, and
  * every numeric field is clamped. This doubles as forward/backward migration.
  * @param {object} raw
- * @returns {Challenge}
+ * @returns {Track}
  */
-export function sanitizeChallenge(raw) {
-  const base = foundry.utils.deepClone(DEFAULT_CHALLENGE);
+export function sanitizeTrack(raw) {
+  const base = foundry.utils.deepClone(DEFAULT_TRACK);
   const merged = foundry.utils.mergeObject(base, raw ?? {}, {
     inplace: false,
     insertKeys: false,
@@ -55,6 +58,7 @@ export function sanitizeChallenge(raw) {
   });
 
   merged.schema = SCHEMA_VERSION;
+  merged.id = String(merged.id || "").trim() || generateId();
   merged.active = merged.active === true;
   merged.trackFailures = merged.trackFailures === true;
   merged.visibleToPlayers = merged.visibleToPlayers === true;
@@ -88,37 +92,73 @@ export function sanitizeChallenge(raw) {
 /**
  * Derive the resolution status from the counts.
  * Successes are evaluated first: if both thresholds are met in the same update,
- * the challenge is a win. This is a deliberate, documented tie-break.
- * @param {Challenge} c
+ * the track is a win. This is a deliberate, documented tie-break.
+ * @param {Track} t
  * @returns {string}
  */
-export function computeStatus(c) {
-  if (c.successes >= c.requiredSuccesses) return STATUS.WON;
-  if (c.trackFailures && c.failures >= c.requiredFailures) return STATUS.LOST;
+export function computeStatus(t) {
+  if (t.successes >= t.requiredSuccesses) return STATUS.WON;
+  if (t.trackFailures && t.failures >= t.requiredFailures) return STATUS.LOST;
   return STATUS.RUNNING;
 }
 
 /**
- * The current challenge, always sanitized.
- * @returns {Challenge}
+ * Sanitize a raw array of tracks, dropping anything past the configured cap.
+ * @param {any} raw
+ * @returns {Track[]}
  */
-export function getChallenge() {
+export function sanitizeTracks(raw) {
+  const list = Array.isArray(raw) ? raw : [];
+  const seen = new Set();
+  const clean = [];
+  for (const entry of list) {
+    if (clean.length >= LIMITS.MAX_TRACKS) break;
+    const track = sanitizeTrack(entry);
+    if (seen.has(track.id)) track.id = generateId();
+    seen.add(track.id);
+    clean.push(track);
+  }
+  return clean;
+}
+
+/**
+ * All tracks, always sanitized, in display order.
+ * @returns {Track[]}
+ */
+export function getTracks() {
   try {
-    return sanitizeChallenge(game.settings.get(MODULE_ID, SETTINGS.CHALLENGE));
+    return sanitizeTracks(game.settings.get(MODULE_ID, SETTINGS.TRACKS));
   } catch (err) {
-    logError("Failed to read challenge state; falling back to defaults.", err);
-    return foundry.utils.deepClone(DEFAULT_CHALLENGE);
+    logError("Failed to read track state; falling back to an empty list.", err);
+    return [];
   }
 }
 
 /**
- * Whether the current user is allowed to see the counter at all.
- * @param {Challenge} [challenge]
+ * A single track by id, or null.
+ * @param {string} id
+ * @returns {Track|null}
+ */
+export function getTrack(id) {
+  return getTracks().find((t) => t.id === id) ?? null;
+}
+
+/**
+ * Whether the current user is allowed to see this track at all.
+ * @param {Track} track
  * @returns {boolean}
  */
-export function canUserSee(challenge = getChallenge()) {
-  if (!challenge.active) return false;
-  return game.user.isGM || challenge.visibleToPlayers;
+export function canUserSee(track) {
+  if (!track?.active) return false;
+  return game.user.isGM || track.visibleToPlayers;
+}
+
+/**
+ * The tracks the current user is allowed to see, in display order.
+ * @returns {Track[]}
+ */
+export function getVisibleTracks() {
+  return getTracks().filter((t) => canUserSee(t));
 }
 
 /* -------------------------------------------- */
@@ -136,221 +176,279 @@ function assertGM() {
 }
 
 /**
- * Persist a new challenge state, storing the previous one as a single-level
- * undo snapshot. This is the only function in the module that writes shared data.
- * @param {Challenge} next
+ * Persist a new tracks array, storing the previous one as a single-level undo
+ * snapshot. This is the only function in the module that writes shared data.
+ * @param {Track[]} next
  * @param {object}    [options]
- * @param {boolean}   [options.snapshot=true] Store the previous state for undo.
- * @param {boolean}   [options.announce=true] Post a chat card if enabled.
- * @param {string}    [options.reason]        Localized description of the change.
- * @returns {Promise<Challenge|null>} The stored state, or null on failure.
+ * @param {boolean}   [options.snapshot=true]      Store the previous state for undo.
+ * @param {Track}     [options.announceTrack]      Track to post a chat card for, if enabled.
+ * @param {Track}     [options.announcePrevious]   Prior state of that track, for deltas.
+ * @param {string}    [options.reason]             Localized description of the change.
+ * @returns {Promise<Track[]|null>} The stored list, or null on failure.
  */
-export async function setChallenge(next, { snapshot = true, announce = true, reason } = {}) {
+async function persistTracks(next, { snapshot = true, announceTrack, announcePrevious, reason } = {}) {
   if (!assertGM()) return null;
 
-  const previous = getChallenge();
-  const clean = sanitizeChallenge(next);
+  const previous = getTracks();
+  const clean = sanitizeTracks(next);
 
   try {
     if (snapshot) {
       await game.settings.set(MODULE_ID, SETTINGS.UNDO, {
         schema: SCHEMA_VERSION,
-        challenge: previous,
+        tracks: previous,
         timestamp: Date.now()
       });
     }
-    await game.settings.set(MODULE_ID, SETTINGS.CHALLENGE, clean);
+    await game.settings.set(MODULE_ID, SETTINGS.TRACKS, clean);
   } catch (err) {
-    logError("Failed to write challenge state.", err);
+    logError("Failed to write track state.", err);
     ui.notifications.error(game.i18n.localize("PVC.Notify.WriteFailed"));
     return null;
   }
 
-  log("Challenge updated", { previous, clean, reason });
+  log("Tracks updated", { previous, clean, reason });
 
-  if (announce) await postUpdateCard(clean, previous, reason);
+  if (announceTrack) await postUpdateCard(announceTrack, announcePrevious ?? announceTrack, reason);
   return clean;
 }
 
 /**
- * Start (or restart) a challenge from a configuration object.
- * Counts are reset to zero. Callers are responsible for confirming an overwrite.
- * @param {Partial<Challenge>} config
- * @returns {Promise<Challenge|null>}
+ * Create a new track from a configuration object and add it to the list.
+ * @param {Partial<Track>} config
+ * @returns {Promise<Track|null>}
  */
-export async function startChallenge(config) {
+export async function createTrack(config) {
   if (!assertGM()) return null;
-  const next = sanitizeChallenge({
-    ...foundry.utils.deepClone(DEFAULT_CHALLENGE),
+  const current = getTracks();
+  if (current.length >= LIMITS.MAX_TRACKS) {
+    ui.notifications.warn(
+      game.i18n.format("PVC.Notify.MaxTracksReached", { max: LIMITS.MAX_TRACKS })
+    );
+    return null;
+  }
+
+  const track = sanitizeTrack({
     ...config,
+    id: generateId(),
     active: true,
     successes: 0,
     failures: 0,
     lastChange: { track: "", delta: 0, time: 0 }
   });
-  const result = await setChallenge(next, {
+
+  const result = await persistTracks([...current, track], {
+    announceTrack: track,
+    announcePrevious: track,
     reason: game.i18n.localize("PVC.Reason.Started")
   });
   if (result) ui.notifications.info(game.i18n.localize("PVC.Notify.Started"));
-  return result;
+  return result ? result.find((t) => t.id === track.id) ?? null : null;
 }
 
 /**
- * Apply configuration changes to a running challenge without resetting counts.
- * @param {Partial<Challenge>} config
- * @returns {Promise<Challenge|null>}
+ * Apply configuration changes to a track without resetting its counts.
+ * @param {string} id
+ * @param {Partial<Track>} config
+ * @returns {Promise<Track|null>}
  */
-export async function updateConfig(config) {
+export async function updateTrackConfig(id, config) {
   if (!assertGM()) return null;
-  const current = getChallenge();
-  if (!current.active) {
-    ui.notifications.warn(game.i18n.localize("PVC.Notify.NoChallenge"));
+  const current = getTracks();
+  const track = current.find((t) => t.id === id);
+  if (!track) {
+    ui.notifications.warn(game.i18n.localize("PVC.Notify.NoTrack"));
     return null;
   }
-  return setChallenge({ ...current, ...config }, {
-    announce: false,
+  const next = current.map((t) => (t.id === id ? { ...t, ...config } : t));
+  const result = await persistTracks(next, {
     reason: game.i18n.localize("PVC.Reason.Reconfigured")
   });
+  return result ? result.find((t) => t.id === id) ?? null : null;
 }
 
 /**
- * Adjust a track by a signed delta. Idempotent in the sense that the resulting
- * value is always derived from the stored value and clamped, so a double click
- * cannot push the counter out of range.
- * @param {"successes"|"failures"} track
+ * Adjust a track's success or failure count by a signed delta. Idempotent in
+ * the sense that the resulting value is always derived from the stored value
+ * and clamped, so a double click cannot push the counter out of range.
+ * @param {string} id
+ * @param {"successes"|"failures"} key
  * @param {number} delta
- * @returns {Promise<Challenge|null>}
+ * @returns {Promise<Track|null>}
  */
-export async function adjust(track, delta) {
+export async function adjustTrack(id, key, delta) {
   if (!assertGM()) return null;
-  if (!["successes", "failures"].includes(track)) {
-    logError(`Refusing to adjust unknown track "${track}".`);
+  if (!["successes", "failures"].includes(key)) {
+    logError(`Refusing to adjust unknown track field "${key}".`);
     return null;
   }
 
-  const current = getChallenge();
-  if (!current.active) {
-    ui.notifications.warn(game.i18n.localize("PVC.Notify.NoChallenge"));
+  const current = getTracks();
+  const track = current.find((t) => t.id === id);
+  if (!track?.active) {
+    ui.notifications.warn(game.i18n.localize("PVC.Notify.NoTrack"));
     return null;
   }
-  if (track === "failures" && !current.trackFailures) {
+  if (key === "failures" && !track.trackFailures) {
     ui.notifications.warn(game.i18n.localize("PVC.Notify.FailuresDisabled"));
     return null;
   }
 
-  const value = clampInt(current[track] + Number(delta), 0, LIMITS.MAX_COUNT);
-  if (value === current[track]) return current;
+  const value = clampInt(track[key] + Number(delta), 0, LIMITS.MAX_COUNT);
+  if (value === track[key]) return track;
 
-  const applied = value - current[track];
+  const applied = value - track[key];
+  const updated = {
+    ...track,
+    [key]: value,
+    lastChange: { track: key, delta: applied, time: Date.now() }
+  };
   const reason = game.i18n.format("PVC.Reason.Adjusted", {
-    track: game.i18n.localize(track === "successes" ? "PVC.Successes" : "PVC.Failures"),
+    track: game.i18n.localize(key === "successes" ? "PVC.Successes" : "PVC.Failures"),
     delta: applied > 0 ? `+${applied}` : String(applied)
   });
-  return setChallenge(
-    {
-      ...current,
-      [track]: value,
-      lastChange: { track, delta: applied, time: Date.now() }
-    },
-    { reason }
+
+  const result = await persistTracks(
+    current.map((t) => (t.id === id ? updated : t)),
+    { announceTrack: updated, announcePrevious: track, reason }
   );
+  return result ? result.find((t) => t.id === id) ?? null : null;
 }
 
 /**
- * Set both counts explicitly.
+ * Set both counts of a track explicitly.
+ * @param {string} id
  * @param {number} successes
  * @param {number} failures
- * @returns {Promise<Challenge|null>}
+ * @returns {Promise<Track|null>}
  */
-export async function setCounts(successes, failures) {
+export async function setTrackCounts(id, successes, failures) {
   if (!assertGM()) return null;
-  const current = getChallenge();
-  if (!current.active) {
-    ui.notifications.warn(game.i18n.localize("PVC.Notify.NoChallenge"));
+  const current = getTracks();
+  const track = current.find((t) => t.id === id);
+  if (!track?.active) {
+    ui.notifications.warn(game.i18n.localize("PVC.Notify.NoTrack"));
     return null;
   }
   const nextSuccesses = clampInt(successes, 0, LIMITS.MAX_COUNT);
   const nextFailures = clampInt(failures, 0, LIMITS.MAX_COUNT);
-  const successDelta = nextSuccesses - current.successes;
-  const failureDelta = nextFailures - current.failures;
+  const successDelta = nextSuccesses - track.successes;
+  const failureDelta = nextFailures - track.failures;
 
-  // Attribute the footer line to whichever track actually moved.
-  const track = successDelta !== 0 ? "successes" : failureDelta !== 0 ? "failures" : "";
+  // Attribute the footer line to whichever field actually moved.
+  const key = successDelta !== 0 ? "successes" : failureDelta !== 0 ? "failures" : "";
   const delta = successDelta !== 0 ? successDelta : failureDelta;
 
-  return setChallenge(
-    {
-      ...current,
-      successes: nextSuccesses,
-      failures: nextFailures,
-      lastChange: track ? { track, delta, time: Date.now() } : current.lastChange
-    },
-    { reason: game.i18n.localize("PVC.Reason.CountsSet") }
+  const updated = {
+    ...track,
+    successes: nextSuccesses,
+    failures: nextFailures,
+    lastChange: key ? { track: key, delta, time: Date.now() } : track.lastChange
+  };
+
+  const result = await persistTracks(
+    current.map((t) => (t.id === id ? updated : t)),
+    { announceTrack: updated, announcePrevious: track, reason: game.i18n.localize("PVC.Reason.CountsSet") }
   );
+  return result ? result.find((t) => t.id === id) ?? null : null;
 }
 
 /**
- * Reset both counts to zero, keeping the challenge and its configuration.
- * @returns {Promise<Challenge|null>}
+ * Reset a track's counts to zero, keeping its configuration.
+ * @param {string} id
+ * @returns {Promise<Track|null>}
  */
-export async function resetCounts() {
+export async function resetTrackCounts(id) {
   if (!assertGM()) return null;
-  const current = getChallenge();
-  if (!current.active) {
-    ui.notifications.warn(game.i18n.localize("PVC.Notify.NoChallenge"));
+  const current = getTracks();
+  const track = current.find((t) => t.id === id);
+  if (!track?.active) {
+    ui.notifications.warn(game.i18n.localize("PVC.Notify.NoTrack"));
     return null;
   }
-  const result = await setChallenge(
-    { ...current, successes: 0, failures: 0, lastChange: { track: "", delta: 0, time: 0 } },
-    { reason: game.i18n.localize("PVC.Reason.Reset") }
+  const updated = {
+    ...track,
+    successes: 0,
+    failures: 0,
+    lastChange: { track: "", delta: 0, time: 0 }
+  };
+  const result = await persistTracks(
+    current.map((t) => (t.id === id ? updated : t)),
+    { announceTrack: updated, announcePrevious: track, reason: game.i18n.localize("PVC.Reason.Reset") }
   );
   if (result) ui.notifications.info(game.i18n.localize("PVC.Notify.Reset"));
-  return result;
+  return result ? result.find((t) => t.id === id) ?? null : null;
 }
 
 /**
- * End the challenge and clear the counter from every screen.
+ * Remove a track and clear it from every screen.
  * The previous state remains available through {@link undo} until the next write.
- * @returns {Promise<Challenge|null>}
+ * @param {string} id
+ * @returns {Promise<Track[]|null>}
  */
-export async function clearChallenge() {
+export async function removeTrack(id) {
   if (!assertGM()) return null;
-  const result = await setChallenge(foundry.utils.deepClone(DEFAULT_CHALLENGE), {
-    announce: false,
-    reason: game.i18n.localize("PVC.Reason.Cleared")
-  });
+  const current = getTracks();
+  if (!current.some((t) => t.id === id)) {
+    ui.notifications.warn(game.i18n.localize("PVC.Notify.NoTrack"));
+    return null;
+  }
+  const result = await persistTracks(
+    current.filter((t) => t.id !== id),
+    { reason: game.i18n.localize("PVC.Reason.Cleared") }
+  );
   if (result) ui.notifications.info(game.i18n.localize("PVC.Notify.Cleared"));
   return result;
 }
 
 /**
- * Flip whether players can see the counter. Bound to the eye button in the HUD
- * title bar; GM only, and it does not touch the counts.
- * @returns {Promise<Challenge|null>}
+ * Move a track up or down in display order.
+ * @param {string} id
+ * @param {-1|1} direction
+ * @returns {Promise<Track[]|null>}
  */
-export async function togglePlayerVisibility() {
+export async function moveTrack(id, direction) {
   if (!assertGM()) return null;
-  const current = getChallenge();
-  if (!current.active) {
-    ui.notifications.warn(game.i18n.localize("PVC.Notify.NoChallenge"));
+  const current = getTracks();
+  const index = current.findIndex((t) => t.id === id);
+  const target = index + direction;
+  if (index === -1 || target < 0 || target >= current.length) return current;
+
+  const next = [...current];
+  [next[index], next[target]] = [next[target], next[index]];
+  return persistTracks(next, { reason: game.i18n.localize("PVC.Reason.Reordered") });
+}
+
+/**
+ * Flip whether players can see a specific track. GM only; does not touch counts.
+ * @param {string} id
+ * @returns {Promise<Track|null>}
+ */
+export async function toggleTrackVisibility(id) {
+  if (!assertGM()) return null;
+  const current = getTracks();
+  const track = current.find((t) => t.id === id);
+  if (!track?.active) {
+    ui.notifications.warn(game.i18n.localize("PVC.Notify.NoTrack"));
     return null;
   }
-  const visible = !current.visibleToPlayers;
-  const result = await setChallenge(
-    { ...current, visibleToPlayers: visible },
-    { announce: false, reason: game.i18n.localize("PVC.Reason.Reconfigured") }
+  const visible = !track.visibleToPlayers;
+  const updated = { ...track, visibleToPlayers: visible };
+  const result = await persistTracks(
+    current.map((t) => (t.id === id ? updated : t)),
+    { reason: game.i18n.localize("PVC.Reason.Reconfigured") }
   );
   if (result) {
     ui.notifications.info(
       game.i18n.localize(visible ? "PVC.Notify.NowVisible" : "PVC.Notify.NowHidden")
     );
   }
-  return result;
+  return result ? result.find((t) => t.id === id) ?? null : null;
 }
 
 /**
- * Restore the single-level undo snapshot.
- * @returns {Promise<Challenge|null>}
+ * Restore the single-level undo snapshot for the whole track list.
+ * @returns {Promise<Track[]|null>}
  */
 export async function undo() {
   if (!assertGM()) return null;
@@ -361,13 +459,12 @@ export async function undo() {
     logError("Failed to read the undo buffer.", err);
     buffer = null;
   }
-  if (!buffer?.challenge) {
+  if (!buffer?.tracks) {
     ui.notifications.warn(game.i18n.localize("PVC.Notify.NothingToUndo"));
     return null;
   }
-  const result = await setChallenge(buffer.challenge, {
+  const result = await persistTracks(buffer.tracks, {
     snapshot: false,
-    announce: false,
     reason: game.i18n.localize("PVC.Reason.Undone")
   });
   if (result) {
@@ -384,7 +481,7 @@ export async function undo() {
  */
 export function hasUndo() {
   try {
-    return Boolean(game.settings.get(MODULE_ID, SETTINGS.UNDO)?.challenge);
+    return Array.isArray(game.settings.get(MODULE_ID, SETTINGS.UNDO)?.tracks);
   } catch {
     return false;
   }
@@ -395,16 +492,16 @@ export function hasUndo() {
 /* -------------------------------------------- */
 
 /**
- * Post a chat card summarizing the new state, if the GM enabled chat updates.
- * The card is whispered to GMs when the challenge is hidden from players.
- * @param {Challenge} challenge
- * @param {Challenge} previous
+ * Post a chat card summarizing a track's new state, if the GM enabled chat
+ * updates. The card is whispered to GMs when the track is hidden from players.
+ * @param {Track} track
+ * @param {Track} previous
  * @param {string}    [reason]
  * @returns {Promise<void>}
  */
-async function postUpdateCard(challenge, previous, reason) {
+async function postUpdateCard(track, previous, reason) {
   if (!game.user.isGM) return;
-  if (!challenge.active) return;
+  if (!track.active) return;
   let enabled = false;
   try {
     enabled = game.settings.get(MODULE_ID, SETTINGS.POST_CHAT) === true;
@@ -417,21 +514,21 @@ async function postUpdateCard(challenge, previous, reason) {
     const content = await foundry.applications.handlebars.renderTemplate(
       `modules/${MODULE_ID}/templates/chat-card.hbs`,
       {
-        challenge,
+        track,
         reason: reason ?? "",
-        statusLabel: game.i18n.localize(`PVC.Status.${challenge.status}`),
-        successDelta: challenge.successes - previous.successes,
-        failureDelta: challenge.failures - previous.failures
+        statusLabel: game.i18n.localize(`PVC.Status.${track.status}`),
+        successDelta: track.successes - previous.successes,
+        failureDelta: track.failures - previous.failures
       }
     );
 
     const data = { content, speaker: { alias: game.i18n.localize("PVC.Title") } };
-    if (!challenge.visibleToPlayers) {
+    if (!track.visibleToPlayers) {
       data.whisper = ChatMessage.getWhisperRecipients("GM").map((u) => u.id);
     }
     await ChatMessage.create(data);
   } catch (err) {
     // A failed chat card must never block the state update itself.
-    logError("Failed to post the challenge chat card.", err);
+    logError("Failed to post the track chat card.", err);
   }
 }
