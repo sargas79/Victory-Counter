@@ -3,7 +3,16 @@
 All notable changes to PF2e Victory Counter are documented here.
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.0] - Unreleased
+## [1.0.1] - 2026-08-17
+
+### Fixed
+
+- The GM control panel failed to open, logging `Template part "main" must render
+  a single HTML element.` The panel template resolved to two or three sibling
+  root elements; an ApplicationV2 template part must resolve to exactly one.
+  The body is now wrapped in a single container.
+
+## [1.0.0] - 2026-08-17
 
 ### Added
 

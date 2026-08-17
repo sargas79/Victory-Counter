@@ -2,7 +2,7 @@
   "id": "pf2e-victory-counter",
   "title": "PF2e Victory Counter",
   "description": "A shared, always-visible Victory Point counter for Pathfinder 2e Remaster subsystem challenges. The GM initializes a challenge, sets the required successes (and optional failure threshold), and adjusts progress live. Every player sees the same state on screen.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "authors": [
     {
       "name": "Diego Vescovini",

@@ -1,4 +1,8 @@
-{{!-- GM control panel. Rendered inside a standard ApplicationV2 window frame. --}}
+{{!-- GM control panel. Rendered inside a standard ApplicationV2 window frame.
+      An ApplicationV2 template part must resolve to exactly one root element,
+      so everything below is wrapped in a single container. --}}
+
+<div class="pvc-panel-body">
 
 <section class="pvc-panel-status {{#if challenge.active}}active{{/if}}">
   {{#if challenge.active}}
@@ -131,3 +135,5 @@
   </footer>
 </fieldset>
 {{/if}}
+
+</div>
