@@ -7,9 +7,9 @@ export const MODULE_ID = "pf2e-victory-counter";
 
 /** Setting keys, namespaced under the module. */
 export const SETTINGS = Object.freeze({
-  /** World scope. The single active challenge document (plain object). */
-  CHALLENGE: "challenge",
-  /** World scope. One-level undo snapshot of the previous challenge state. */
+  /** World scope. The list of active tracks (plain objects). */
+  TRACKS: "tracks",
+  /** World scope. One-level undo snapshot of the previous tracks array. */
   UNDO: "undoBuffer",
   /** Client scope. Per-user local dismissal of the overlay. */
   OVERLAY_HIDDEN: "overlayHidden",
@@ -21,16 +21,16 @@ export const SETTINGS = Object.freeze({
   OVERLAY_OFFSET: "overlayOffset",
   /** Client scope. Overlay scale multiplier. */
   OVERLAY_SCALE: "overlayScale",
-  /** World scope. Post a chat card whenever the challenge state changes. */
+  /** World scope. Post a chat card whenever a track's state changes. */
   POST_CHAT: "postChatUpdates",
   /** World scope. Verbose console logging. */
   DEBUG: "debug"
 });
 
-/** Current persisted schema version for the challenge object. */
-export const SCHEMA_VERSION = 1;
+/** Current persisted schema version for a track object. */
+export const SCHEMA_VERSION = 2;
 
-/** Resolution states a challenge can be in. */
+/** Resolution states a track can be in. */
 export const STATUS = Object.freeze({
   RUNNING: "running",
   WON: "won",
@@ -45,22 +45,25 @@ export const OVERLAY_POSITIONS = Object.freeze({
   "bottom-center": "PVC.Settings.OverlayPosition.BottomCenter"
 });
 
-/** Hard bounds. Counts are clamped to these to keep the UI and data sane. */
+/** Hard bounds. Counts and list size are clamped to these to keep the UI and data sane. */
 export const LIMITS = Object.freeze({
   MIN_REQUIRED: 1,
   MAX_REQUIRED: 100,
   MAX_COUNT: 999,
-  MAX_TITLE_LENGTH: 80
+  MAX_TITLE_LENGTH: 80,
+  MAX_TRACKS: 10
 });
 
 /**
- * The immutable default shape of a challenge. Any stored value is merged onto a
- * clone of this object with `insertKeys: false`, so unknown keys are discarded
- * and missing keys are backfilled. That is the module's entire migration story.
+ * The immutable default shape of a single track. Any stored value is merged
+ * onto a clone of this object with `insertKeys: false`, so unknown keys are
+ * discarded and missing keys are backfilled. That is the module's entire
+ * migration story.
  * @type {Readonly<object>}
  */
-export const DEFAULT_CHALLENGE = Object.freeze({
+export const DEFAULT_TRACK = Object.freeze({
   schema: SCHEMA_VERSION,
+  id: "",
   active: false,
   title: "",
   successes: 0,
@@ -89,6 +92,14 @@ export function clampInt(value, min, max) {
   const n = Number(value);
   if (!Number.isFinite(n)) return min;
   return Math.min(max, Math.max(min, Math.round(n)));
+}
+
+/**
+ * Generate a short unique id for a new track.
+ * @returns {string}
+ */
+export function generateId() {
+  return foundry.utils.randomID(12);
 }
 
 /**

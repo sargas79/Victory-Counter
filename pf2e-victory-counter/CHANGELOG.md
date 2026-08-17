@@ -3,6 +3,30 @@
 All notable changes to PF2e Victory Counter are documented here.
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-08-17
+
+### Changed
+
+- **Breaking:** replaced the single active challenge with a list of up to 10
+  concurrent, independently named tracks (e.g. "Infiltration Points", "Guard
+  Awareness", "Doomsday Device Activation"), each with its own successes,
+  failures, thresholds, and win/loss resolution. Existing world data from the
+  1.x single-challenge setting is not migrated and will be replaced by an
+  empty track list on first load.
+- The HUD now renders a stacked list of track cards (one per track the current
+  user may see) instead of a single panel; the collapsed state shows one
+  compact chip per track.
+- The GM control panel now lists every track with inline configuration,
+  progress steppers, reordering, per-track player-visibility, reset and end
+  controls, plus an "Add Track" form. Undo restores the entire track list to
+  its previous snapshot.
+- The public API (`game.modules.get("pf2e-victory-counter").api`) is now
+  track-aware: `create`, `configure(id, …)`, `addSuccess(id, …)`,
+  `addFailure(id, …)`, `setCounts(id, …)`, `reset(id)`, `end(id)`,
+  `toggleVisibility(id)`, and `move(id, direction)` replace the old
+  single-challenge methods.
+- Chat cards are posted per track change and reference that track's name.
+
 ## [1.0.1] - 2026-08-17
 
 ### Fixed

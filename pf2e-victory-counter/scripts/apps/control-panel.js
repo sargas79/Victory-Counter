@@ -1,20 +1,22 @@
 /**
- * The GM control panel: initialize a challenge, configure thresholds, and
- * adjust progress. Never rendered for non-GM users.
+ * The GM control panel: create tracks, configure thresholds, and adjust
+ * progress for each one. Never rendered for non-GM users.
  *
  * @module pf2e-victory-counter/apps/control-panel
  */
 
 import { LIMITS, MODULE_ID, STATUS, clampInt } from "../constants.js";
 import {
-  adjust,
-  clearChallenge,
-  getChallenge,
+  adjustTrack,
+  createTrack,
+  getTracks,
   hasUndo,
-  resetCounts,
-  startChallenge,
+  moveTrack,
+  removeTrack,
+  resetTrackCounts,
+  toggleTrackVisibility,
   undo,
-  updateConfig
+  updateTrackConfig
 } from "../state.js";
 
 const { ApplicationV2, DialogV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -28,21 +30,23 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
     window: {
       title: "PVC.Panel.Title",
       icon: "fa-solid fa-trophy",
-      resizable: false
+      resizable: true
     },
-    position: { width: 420 },
+    position: { width: 460, height: "auto" },
     form: {
       // All mutations go through explicit buttons, so there is no submit path.
       closeOnSubmit: false,
       submitOnChange: false
     },
     actions: {
-      startChallenge: this.onStart,
-      applyConfig: this.onApply,
+      addTrack: this.onAddTrack,
+      applyConfig: this.onApplyConfig,
       adjustTrack: this.onAdjust,
       resetCounts: this.onReset,
-      undoChange: this.onUndo,
-      endChallenge: this.onEnd
+      removeTrack: this.onRemove,
+      toggleVisibility: this.onToggleVisibility,
+      moveTrack: this.onMove,
+      undoChange: this.onUndo
     }
   };
 
@@ -55,25 +59,53 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
 
   /** @override */
   async _prepareContext(_options) {
-    const challenge = getChallenge();
+    const tracks = getTracks().map((track) => ({
+      ...track,
+      statusLabel: game.i18n.localize(`PVC.Status.${track.status}`),
+      resolved: track.status !== STATUS.RUNNING
+    }));
     return {
-      challenge,
+      tracks,
+      atMax: tracks.length >= LIMITS.MAX_TRACKS,
       canUndo: hasUndo(),
-      resolved: challenge.status !== STATUS.RUNNING,
-      statusLabel: game.i18n.localize(`PVC.Status.${challenge.status}`),
       limits: LIMITS
     };
   }
 
   /**
-   * Read the configuration fields currently entered in the panel.
-   * Values are clamped here as well as in the state layer.
+   * Read the "add track" configuration fields.
    * @returns {{title: string, requiredSuccesses: number, requiredFailures: number,
    *           trackFailures: boolean, visibleToPlayers: boolean}}
    */
-  readForm() {
+  readNewTrackForm() {
     const root = this.element;
     const field = (name) => root.querySelector(`[name="${name}"]`);
+    return {
+      title: String(field("new-title")?.value ?? "").trim().slice(0, LIMITS.MAX_TITLE_LENGTH),
+      requiredSuccesses: clampInt(
+        field("new-requiredSuccesses")?.value,
+        LIMITS.MIN_REQUIRED,
+        LIMITS.MAX_REQUIRED
+      ),
+      requiredFailures: clampInt(
+        field("new-requiredFailures")?.value,
+        LIMITS.MIN_REQUIRED,
+        LIMITS.MAX_REQUIRED
+      ),
+      trackFailures: field("new-trackFailures")?.checked === true,
+      visibleToPlayers: field("new-visibleToPlayers")?.checked === true
+    };
+  }
+
+  /**
+   * Read the configuration fields for an existing track's row.
+   * @param {string} id
+   * @returns {{title: string, requiredSuccesses: number, requiredFailures: number,
+   *           trackFailures: boolean, visibleToPlayers: boolean}}
+   */
+  readTrackForm(id) {
+    const root = this.element;
+    const field = (name) => root.querySelector(`[name="${name}-${id}"]`);
     return {
       title: String(field("title")?.value ?? "").trim().slice(0, LIMITS.MAX_TITLE_LENGTH),
       requiredSuccesses: clampInt(
@@ -96,38 +128,24 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
   /* ---------------------------------------- */
 
   /**
-   * Start a new challenge. Requires explicit confirmation when this would
-   * discard a challenge that is already running.
+   * Create a new track from the "add track" fieldset.
    * @this {VictoryCounterPanel}
    */
-  static async onStart() {
-    const current = getChallenge();
-    const config = this.readForm();
-
-    if (current.active) {
-      const proceed = await DialogV2.confirm({
-        window: { title: game.i18n.localize("PVC.Confirm.RestartTitle") },
-        content: `<p>${game.i18n.format("PVC.Confirm.RestartContent", {
-          title: current.title || game.i18n.localize("PVC.DefaultTitle"),
-          successes: current.successes,
-          failures: current.failures
-        })}</p>`,
-        rejectClose: false,
-        modal: true
-      });
-      if (!proceed) return;
-    }
-
-    await startChallenge(config);
-    await this.render();
+  static async onAddTrack() {
+    const config = this.readNewTrackForm();
+    const result = await createTrack(config);
+    if (result) await this.render();
   }
 
   /**
-   * Apply configuration changes to the running challenge without touching counts.
+   * Apply configuration changes to an existing track without touching counts.
    * @this {VictoryCounterPanel}
+   * @param {PointerEvent} event
+   * @param {HTMLElement}  target
    */
-  static async onApply() {
-    const result = await updateConfig(this.readForm());
+  static async onApplyConfig(event, target) {
+    const id = target.dataset.id;
+    const result = await updateTrackConfig(id, this.readTrackForm(id));
     if (result) ui.notifications.info(game.i18n.localize("PVC.Notify.ConfigApplied"));
     await this.render();
   }
@@ -138,17 +156,20 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
    * @param {HTMLElement}  target
    */
   static async onAdjust(event, target) {
-    const track = target.dataset.track;
+    const id = target.dataset.id;
+    const key = target.dataset.track;
     const delta = Number(target.dataset.delta);
     if (!Number.isFinite(delta)) return;
-    await adjust(track, delta);
+    await adjustTrack(id, key, delta);
     await this.render();
   }
 
   /**
    * @this {VictoryCounterPanel}
+   * @param {PointerEvent} event
+   * @param {HTMLElement}  target
    */
-  static async onReset() {
+  static async onReset(event, target) {
     const proceed = await DialogV2.confirm({
       window: { title: game.i18n.localize("PVC.Confirm.ResetTitle") },
       content: `<p>${game.i18n.localize("PVC.Confirm.ResetContent")}</p>`,
@@ -156,7 +177,50 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
       modal: true
     });
     if (!proceed) return;
-    await resetCounts();
+    await resetTrackCounts(target.dataset.id);
+    await this.render();
+  }
+
+  /**
+   * @this {VictoryCounterPanel}
+   * @param {PointerEvent} event
+   * @param {HTMLElement}  target
+   */
+  static async onRemove(event, target) {
+    const id = target.dataset.id;
+    const current = getTracks().find((t) => t.id === id);
+    const proceed = await DialogV2.confirm({
+      window: { title: game.i18n.localize("PVC.Confirm.EndTitle") },
+      content: `<p>${game.i18n.format("PVC.Confirm.EndContent", {
+        title: current?.title || game.i18n.localize("PVC.DefaultTitle")
+      })}</p><p class="notes">${game.i18n.localize("PVC.Confirm.EndNote")}</p>`,
+      rejectClose: false,
+      modal: true
+    });
+    if (!proceed) return;
+    await removeTrack(id);
+    await this.render();
+  }
+
+  /**
+   * @this {VictoryCounterPanel}
+   * @param {PointerEvent} event
+   * @param {HTMLElement}  target
+   */
+  static async onToggleVisibility(event, target) {
+    await toggleTrackVisibility(target.dataset.id);
+    await this.render();
+  }
+
+  /**
+   * @this {VictoryCounterPanel}
+   * @param {PointerEvent} event
+   * @param {HTMLElement}  target
+   */
+  static async onMove(event, target) {
+    const direction = Number(target.dataset.direction);
+    if (![-1, 1].includes(direction)) return;
+    await moveTrack(target.dataset.id, direction);
     await this.render();
   }
 
@@ -165,25 +229,6 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
    */
   static async onUndo() {
     await undo();
-    await this.render();
-  }
-
-  /**
-   * End the challenge and remove the counter from every screen.
-   * @this {VictoryCounterPanel}
-   */
-  static async onEnd() {
-    const current = getChallenge();
-    const proceed = await DialogV2.confirm({
-      window: { title: game.i18n.localize("PVC.Confirm.EndTitle") },
-      content: `<p>${game.i18n.format("PVC.Confirm.EndContent", {
-        title: current.title || game.i18n.localize("PVC.DefaultTitle")
-      })}</p><p class="notes">${game.i18n.localize("PVC.Confirm.EndNote")}</p>`,
-      rejectClose: false,
-      modal: true
-    });
-    if (!proceed) return;
-    await clearChallenge();
     await this.render();
   }
 
