@@ -1,0 +1,28 @@
+{{!-- Chat summary posted when the challenge state changes. --}}
+<div class="pvc-chat-card pvc-{{challenge.status}}">
+  <header class="pvc-chat-header">
+    <i class="fa-solid fa-trophy" aria-hidden="true"></i>
+    <span>{{#if challenge.title}}{{challenge.title}}{{else}}{{localize "PVC.DefaultTitle"}}{{/if}}</span>
+  </header>
+
+  {{#if reason}}<p class="pvc-chat-reason">{{reason}}</p>{{/if}}
+
+  <ul class="pvc-chat-counts">
+    <li>
+      <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+      {{localize "PVC.Successes"}}: <strong>{{challenge.successes}} / {{challenge.requiredSuccesses}}</strong>
+      {{#if successDelta}}<span class="pvc-chat-delta">({{numberFormat successDelta sign=true}})</span>{{/if}}
+    </li>
+    {{#if challenge.trackFailures}}
+    <li>
+      <i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>
+      {{localize "PVC.Failures"}}: <strong>{{challenge.failures}} / {{challenge.requiredFailures}}</strong>
+      {{#if failureDelta}}<span class="pvc-chat-delta">({{numberFormat failureDelta sign=true}})</span>{{/if}}
+    </li>
+    {{/if}}
+  </ul>
+
+  {{#unless (eq challenge.status "running")}}
+  <div class="pvc-chat-result">{{statusLabel}}</div>
+  {{/unless}}
+</div>
