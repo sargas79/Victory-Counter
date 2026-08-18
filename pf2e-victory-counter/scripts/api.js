@@ -6,9 +6,7 @@
  * @module pf2e-victory-counter/api
  */
 
-import { MODULE_ID, TRACK_TYPES, warn } from "./constants.js";
-import { VictoryCounterPanel } from "./apps/control-panel.js";
-import { VictoryCounterOverlay } from "./apps/overlay.js";
+import { MODULE_ID, TRACK_TYPES, logError, warn } from "./constants.js";
 import {
   adjustTrack,
   createTrack,
@@ -31,6 +29,30 @@ import {
  * @type {Set<string>}
  */
 const warned = new Set();
+
+/**
+ * Load an application class on demand.
+ *
+ * The apps are imported lazily rather than statically for the same reason as in
+ * `hooks.js`: a UI module that fails to parse would otherwise take the entire
+ * API down with it, leaving macros that only read or mutate track data broken
+ * for no reason. See the bootstrap note in `hooks.js`.
+ *
+ * @param {"overlay"|"panel"} which
+ * @returns {Promise<any|null>} The class, or null if it could not be loaded.
+ */
+async function loadApp(which) {
+  try {
+    if (which === "overlay") {
+      return (await import("./apps/overlay.js")).VictoryCounterOverlay;
+    }
+    return (await import("./apps/control-panel.js")).VictoryCounterPanel;
+  } catch (err) {
+    logError(`The victory counter interface could not be loaded (api.${which}).`, err);
+    ui?.notifications?.error(game.i18n.localize("PVC.Notify.UILoadFailed"));
+    return null;
+  }
+}
 
 /**
  * @param {string} oldName
@@ -117,14 +139,29 @@ export const api = {
   /** @returns {boolean} */
   canUndo: () => hasUndo(),
 
-  /** Open the GM control panel. */
-  openPanel: () => VictoryCounterPanel.show(),
+  /** Open the GM control panel. Resolves to false if the UI cannot be loaded. */
+  openPanel: async () => {
+    const Panel = await loadApp("panel");
+    if (!Panel) return false;
+    await Panel.show();
+    return true;
+  },
 
   /** Un-hide the overlay for the current user. */
-  showOverlay: () => VictoryCounterOverlay.reveal(),
+  showOverlay: async () => {
+    const Overlay = await loadApp("overlay");
+    if (!Overlay) return false;
+    await Overlay.reveal();
+    return true;
+  },
 
   /** Toggle the overlay for the current user. */
-  toggleOverlay: () => VictoryCounterOverlay.toggleVisibility(),
+  toggleOverlay: async () => {
+    const Overlay = await loadApp("overlay");
+    if (!Overlay) return false;
+    await Overlay.toggleVisibility();
+    return true;
+  },
 
   /* ------------------------------------------ */
   /*  Deprecated 2.x shims                      */
