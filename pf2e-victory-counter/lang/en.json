@@ -79,6 +79,8 @@
   "PVC.Notify.NowHidden": "The track is now hidden from players.",
   "PVC.Notify.FailuresRemoved": "Failure tracking was removed in version 3.0. Create a separate Negative track instead.",
   "PVC.Notify.MigrationFailed": "Victory counter data could not be migrated. The original data was left untouched; check the console.",
+  "PVC.Notify.UILoadFailed": "The victory counter interface could not be loaded. Track data is safe and unchanged. This usually means a module file is damaged or was only partially deployed — reinstall the module folder and reload. See the console for details.",
+  "PVC.Notify.BootstrapFailed": "PF2e Victory Counter failed to start and will not appear in the scene controls. Track data is safe and unchanged. Reinstall the module folder and reload; see the console for details.",
 
   "PVC.Reason.Started": "Track started.",
   "PVC.Reason.Reconfigured": "Track settings updated.",

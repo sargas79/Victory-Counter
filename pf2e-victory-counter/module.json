@@ -2,7 +2,7 @@
   "id": "pf2e-victory-counter",
   "title": "PF2e Victory Counter",
   "description": "Shared, always-visible progress tracks for Pathfinder 2e Remaster subsystem challenges. The GM creates any number of named tracks (e.g. Infiltration Points, Guard Awareness, Doomsday Device Activation), each with its own target, positive/negative polarity, optional progress ring, and player visibility. Every player sees the same live state on screen.",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "authors": [
     {
       "name": "Diego Vescovini",
@@ -11,7 +11,7 @@
   ],
   "compatibility": {
     "minimum": "14",
-    "verified": "14.365"
+    "verified": "14.366"
   },
   "relationships": {
     "systems": [

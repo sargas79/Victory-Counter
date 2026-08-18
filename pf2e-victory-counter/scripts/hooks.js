@@ -3,12 +3,27 @@
  * Every hook is registered from {@link registerHooks} so the full surface of the
  * module is auditable in one place.
  *
+ * Bootstrap resilience
+ * --------------------
+ * The two ApplicationV2 subclasses are loaded **lazily**, through dynamic
+ * `import()` inside {@link loadApps}, rather than with a static import at the
+ * top of this file.
+ *
+ * A static import makes the whole module a single failure domain: an ES module
+ * that fails to parse takes its entire import graph with it, so one bad
+ * character in `overlay.js` stops `registerHooks()` from ever running. The
+ * visible result is not "the HUD is broken" but "the module has vanished" —
+ * no scene control buttons, no settings, no API, and nothing but a raw
+ * console error to work from.
+ *
+ * Loading the apps lazily keeps settings, state, migration, the scene control
+ * buttons and the data half of the API working even when a UI module is
+ * unloadable, and turns a silent disappearance into an actionable notification.
+ *
  * @module pf2e-victory-counter/hooks
  */
 
 import { MODULE_ID, STATUS, log, logError, warn } from "./constants.js";
-import { VictoryCounterPanel } from "./apps/control-panel.js";
-import { VictoryCounterOverlay } from "./apps/overlay.js";
 import { exposeApi } from "./api.js";
 import { getTracks, sanitizeTracks } from "./state.js";
 import { registerSettings } from "./settings.js";
@@ -16,6 +31,73 @@ import { runMigration } from "./migration.js";
 
 /** Tracks the last status rendered per track id, so completions announce once. */
 const lastKnownStatus = new Map();
+
+/* -------------------------------------------- */
+/*  Lazy application loading                    */
+/* -------------------------------------------- */
+
+/** @type {Promise<{Overlay: any, Panel: any}>|null} */
+let appsPromise = null;
+
+/** Whether the "UI failed to load" notification has already been shown. */
+let reportedAppFailure = false;
+
+/**
+ * Load the two application classes, once per session.
+ *
+ * A rejected promise is cached deliberately: a module that failed to parse will
+ * fail identically on every retry, and re-importing on each refresh would spam
+ * the console without ever succeeding.
+ *
+ * @returns {Promise<{Overlay: any, Panel: any}>}
+ */
+function loadApps() {
+  if (!appsPromise) {
+    appsPromise = Promise.all([
+      import("./apps/overlay.js"),
+      import("./apps/control-panel.js")
+    ]).then(([overlay, panel]) => ({
+      Overlay: overlay.VictoryCounterOverlay,
+      Panel: panel.VictoryCounterPanel
+    }));
+  }
+  return appsPromise;
+}
+
+/**
+ * Run a callback against the loaded application classes, degrading to a single
+ * actionable notification if they cannot be loaded.
+ *
+ * @template T
+ * @param {(apps: {Overlay: any, Panel: any}) => Promise<T>|T} callback
+ * @param {string} context Short description used in the console error.
+ * @returns {Promise<T|null>}
+ */
+async function withApps(callback, context) {
+  let apps;
+  try {
+    apps = await loadApps();
+  } catch (err) {
+    logError(`The victory counter interface could not be loaded (${context}).`, err);
+    if (!reportedAppFailure) {
+      reportedAppFailure = true;
+      // ui may not exist yet if this somehow runs before `ready`.
+      ui?.notifications?.error(game.i18n.localize("PVC.Notify.UILoadFailed"), {
+        permanent: true
+      });
+    }
+    return null;
+  }
+  return callback(apps);
+}
+
+/**
+ * Whether the interface modules are known to be unloadable.
+ * @returns {boolean}
+ */
+export function uiFailedToLoad() {
+  return reportedAppFailure;
+}
 
 /* -------------------------------------------- */
 /*  Refresh                                     */
@@ -55,12 +137,20 @@ export async function refreshUI({ announce = true } = {}) {
     for (const id of lastKnownStatus.keys()) {
       if (!seenIds.has(id)) lastKnownStatus.delete(id);
     }
-
-    await VictoryCounterOverlay.refresh();
-    await VictoryCounterPanel.refresh();
   } catch (err) {
-    logError("Failed to refresh the victory counter UI.", err);
+    logError("Failed to evaluate track state for the UI refresh.", err);
   }
+
+  // Redrawing is a separate concern from the bookkeeping above: a UI module that
+  // cannot load must not stop completion notifications from being announced.
+  await withApps(async ({ Overlay, Panel }) => {
+    try {
+      await Overlay.refresh();
+      await Panel.refresh();
+    } catch (err) {
+      logError("Failed to refresh the victory counter UI.", err);
+    }
+  }, "refresh");
 }
 
 /**
@@ -125,6 +215,11 @@ async function onReady() {
 /**
  * `getSceneControlButtons` — add a user-facing overlay toggle and a GM-only
  * control panel button to the Token controls.
+ *
+ * Registered unconditionally. The buttons are the module's only entry point in
+ * the UI, so they must appear even when the applications behind them cannot be
+ * loaded — clicking one then explains the problem instead of doing nothing.
+ *
  * @param {Record<string, object>} controls
  */
 function onGetSceneControlButtons(controls) {
@@ -143,7 +238,7 @@ function onGetSceneControlButtons(controls) {
     order: order + 1,
     button: true,
     visible: true,
-    onChange: () => VictoryCounterOverlay.toggleVisibility()
+    onChange: () => withApps(({ Overlay }) => Overlay.toggleVisibility(), "toggle overlay")
   };
 
   tokens.tools.pvcOpenPanel = {
@@ -153,7 +248,7 @@ function onGetSceneControlButtons(controls) {
     order: order + 2,
     button: true,
     visible: game.user.isGM,
-    onChange: () => VictoryCounterPanel.toggle()
+    onChange: () => withApps(({ Panel }) => Panel.toggle(), "open control panel")
   };
 }
 

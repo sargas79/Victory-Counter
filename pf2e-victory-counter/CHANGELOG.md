@@ -3,6 +3,52 @@
 All notable changes to PF2e Victory Counter are documented here.
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.1] - 2026-08-17
+
+### Fixed
+
+- **The module did not load at all.** A code-scanning autofix merged into `main`
+  as part of 3.0.0 added `pointercancel` handling to the HUD resize grip but
+  deleted the `});` that closed the `pointerdown` callback. The resulting brace
+  imbalance moved `#bindResizeGrip` and `#bindSetInputs` outside the class body,
+  making `this.#bindResizeGrip(el)` a reference to an undeclared private name —
+  a **parse-time** `SyntaxError`, not a runtime one:
+
+  ```
+  Uncaught SyntaxError: Private field '#bindResizeGrip' must be declared in an enclosing class
+  ```
+
+  Because the error happened while the ES module was being parsed, nothing in
+  the module ever ran: no settings, no scene control buttons, no HUD, no API.
+  The brace is restored and the `pointercancel` listener kept, since handling a
+  cancelled gesture is a genuine improvement — without it the move listener
+  leaks and the width is never persisted.
+
+  No saved data was affected at any point; the module simply never started.
+
+### Changed
+
+- **A broken interface can no longer take down the whole module.** `hooks.js`
+  and `api.js` previously imported the two ApplicationV2 subclasses statically,
+  which put every part of the module in one failure domain — an unparseable UI
+  file stopped `registerHooks()` from running and the module vanished from the
+  scene controls with nothing but a console error to work from. Both files now
+  load the applications lazily through dynamic `import()`. Settings, state,
+  migration, the Token control buttons and the data half of the API keep working
+  when a UI module cannot be loaded, and the failure surfaces as an actionable
+  notification naming the likely cause instead of silence.
+- `module.js` wraps `registerHooks()` so a failure anywhere in the core import
+  graph reports itself by name rather than disappearing.
+- Verified compatibility raised to Foundry v14.366 (tested against PF2e 8.4.1).
+
+### Notes for reviewers
+
+The regression reached `main` because the autofix commits landed on the release
+branch after review and were merged without the module being loaded again. The
+new self-test asserts that every private method is declared inside the class
+body and that `#bindResizeGrip`'s braces balance, so this specific breakage
+cannot merge silently a second time.
+
 ## [3.0.0] - 2026-08-17
 
 ### Changed

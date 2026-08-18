@@ -293,7 +293,11 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
 
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", onUp);
+      // `pointercancel` fires when the browser takes over the gesture (a touch
+      // turning into a scroll, the pointer leaving the window). Without it the
+      // move listener would leak and the width would never be persisted.
       window.addEventListener("pointercancel", onUp);
+    });
 
     // Double-clicking the grip returns the HUD to the default width.
     grip.addEventListener("dblclick", async (event) => {
