@@ -23,7 +23,6 @@ import {
   SCHEMA_VERSION,
   SETTINGS,
   TRACK_TYPES,
-  clampInt,
   log,
   logError
 } from "./constants.js";
