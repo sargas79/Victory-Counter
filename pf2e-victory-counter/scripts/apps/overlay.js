@@ -285,6 +285,7 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
       const onUp = async () => {
         window.removeEventListener("pointermove", onMove);
         window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
         el.classList.remove("pvc-resizing");
         await game.settings.set(MODULE_ID, SETTINGS.OVERLAY_WIDTH, width);
         log("Overlay resized", { width });
@@ -292,7 +293,7 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
 
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", onUp);
-    });
+      window.addEventListener("pointercancel", onUp);
 
     // Double-clicking the grip returns the HUD to the default width.
     grip.addEventListener("dblclick", async (event) => {
