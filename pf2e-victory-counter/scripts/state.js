@@ -375,6 +375,7 @@ export async function adjustTrack(id, delta) {
   const updated = {
     ...track,
     current: value,
+    status: computeStatus({ ...track, current: value }),
     lastChange: { delta: applied, time: Date.now() }
   };
   const reason = game.i18n.format("PVC.Reason.Adjusted", {
@@ -417,6 +418,7 @@ export async function setTrackCurrent(id, value) {
   const updated = {
     ...track,
     current: next,
+    status: computeStatus({ ...track, current: next }),
     lastChange: delta === 0 ? track.lastChange : { delta, time: Date.now() }
   };
 
