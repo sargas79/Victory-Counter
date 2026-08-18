@@ -1,7 +1,53 @@
 # Changelog
 
-All notable changes to PF2e Victory Counter are documented here.
+All notable changes to Victory Counter are documented here.
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [4.0.0] - 2026-08-18
+
+The module is no longer tied to Pathfinder 2e. Nothing about how it works has
+changed — the counter never read system data in the first place — but it was
+packaged, named and gated as a PF2e module, and it is now none of those things.
+
+### Changed
+
+- **Renamed to `victory-counter`.** The module id, folder and stylesheet drop
+  their `pf2e-` prefix, and the title is now just *Victory Counter*. Foundry
+  requires the install folder to match the module id, so an existing manual or
+  symlinked install must be re-pointed at `victory-counter/`.
+- **No game system is declared.** The `relationships.systems` entry requiring
+  the PF2e system is gone, so Foundry now offers the module in every world
+  rather than only in PF2e ones. That entry was the actual barrier; it was never
+  a technical dependency.
+- **No game system is detected.** The `setup` hook no longer compares
+  `game.system.id` against `"pf2e"` or warns when it differs. There is nothing
+  system-specific left for the check to protect, and warning about a supported
+  configuration is worse than saying nothing.
+- Documentation, the bootstrap failure notice and the debug-log prefix refer to
+  the module by its new name.
+
+### Added
+
+- **One-time import from the old module id.** Foundry namespaces settings by
+  module id, so the rename would otherwise present every existing world as
+  empty. On the first `ready` after upgrading, the GM's client reads the tracks
+  stored under `pf2e-victory-counter`, migrates them through the normal schema
+  pass and saves them under the new id, reporting how many were carried over.
+
+  The import is deliberately narrow:
+
+  - GM only, and exactly once per world — the latch is recorded even when
+    nothing is found, so no world pays for the lookup twice.
+  - It never overwrites. A world that already has tracks under the new id keeps
+    them and the import is skipped.
+  - It never writes to or deletes the old namespace. The 3.x settings stay in
+    the world database exactly as they were, so reinstalling 3.x recovers the
+    original world unchanged.
+  - The imported array is backed up verbatim before it is reshaped, alongside
+    the existing pre-3.0 backup.
+
+  Per-user display preferences (anchor, width, scale, collapsed state) are not
+  imported. They are cosmetic, per-client, and set again on first use.
 
 ## [3.0.1] - 2026-08-17
 

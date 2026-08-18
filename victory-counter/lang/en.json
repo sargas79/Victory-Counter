@@ -78,9 +78,11 @@
   "PVC.Notify.NowVisible": "The track is now visible to players.",
   "PVC.Notify.NowHidden": "The track is now hidden from players.",
   "PVC.Notify.FailuresRemoved": "Failure tracking was removed in version 3.0. Create a separate Negative track instead.",
+  "PVC.Notify.LegacyImported": "Imported {count} track(s) from the previous PF2e Victory Counter module. The old data was left untouched.",
+  "PVC.Notify.LegacyImportFailed": "Tracks from the previous PF2e Victory Counter module could not be imported. The old data was left untouched; check the console.",
   "PVC.Notify.MigrationFailed": "Victory counter data could not be migrated. The original data was left untouched; check the console.",
   "PVC.Notify.UILoadFailed": "The victory counter interface could not be loaded. Track data is safe and unchanged. This usually means a module file is damaged or was only partially deployed — reinstall the module folder and reload. See the console for details.",
-  "PVC.Notify.BootstrapFailed": "PF2e Victory Counter failed to start and will not appear in the scene controls. Track data is safe and unchanged. Reinstall the module folder and reload; see the console for details.",
+  "PVC.Notify.BootstrapFailed": "Victory Counter failed to start and will not appear in the scene controls. Track data is safe and unchanged. Reinstall the module folder and reload; see the console for details.",
 
   "PVC.Reason.Started": "Track started.",
   "PVC.Reason.Reconfigured": "Track settings updated.",
@@ -94,7 +96,8 @@
   "PVC.Settings.Tracks.Name": "Active Track Data",
   "PVC.Settings.Undo.Name": "Undo Snapshot",
   "PVC.Settings.Schema.Name": "Track Data Schema Version",
-  "PVC.Settings.LegacyBackup.Name": "Pre-3.0 Track Data Backup",
+  "PVC.Settings.LegacyBackup.Name": "Pre-Migration Track Data Backup",
+  "PVC.Settings.ImportedLegacyModule.Name": "Imported From Previous Module Id",
   "PVC.Settings.OverlayHidden.Name": "Overlay Hidden Locally",
   "PVC.Settings.OverlayCollapsed.Name": "Overlay Collapsed Locally",
   "PVC.Settings.OverlayOffset.Name": "Counter Drag Offset",
@@ -115,5 +118,5 @@
   "PVC.Settings.PostChat.Name": "Post Progress to Chat",
   "PVC.Settings.PostChat.Hint": "Post a chat card whenever a track changes. Cards are whispered to GMs while that track is hidden from players.",
   "PVC.Settings.Debug.Name": "Debug Logging",
-  "PVC.Settings.Debug.Hint": "Write verbose diagnostics to the browser console, prefixed with [pf2e-victory-counter]. Also prints the data migration summary."
+  "PVC.Settings.Debug.Hint": "Write verbose diagnostics to the browser console, prefixed with [victory-counter]. Also prints the data migration summary."
 }

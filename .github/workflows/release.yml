@@ -9,7 +9,7 @@ on:
     types: [published]
 
 env:
-  MODULE_ID: pf2e-victory-counter
+  MODULE_ID: victory-counter
 
 jobs:
   build:

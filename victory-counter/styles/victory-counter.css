@@ -1,9 +1,9 @@
 /* ==========================================================================
-   PF2e Victory Counter — Nocturne
+   Victory Counter — Nocturne
    Ported from the "Victory Points HUD" design (variant 1a, collapsed 1e).
 
    Every selector is namespaced under .pvc / #pvc-overlay, so nothing here can
-   leak into core Foundry or PF2e system styling.
+   leak into core Foundry or game-system styling.
 
    Palette note: Nocturne is a mono-accent system with no danger role. The
    accent carries progress on a positive track. --pvc-negative is the single

@@ -11,7 +11,7 @@
  * - After every render the window refits itself against the viewport, so the
  *   content area only scrolls when the window genuinely runs out of screen.
  *
- * @module pf2e-victory-counter/apps/control-panel
+ * @module victory-counter/apps/control-panel
  */
 
 import {

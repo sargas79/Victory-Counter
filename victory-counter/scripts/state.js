@@ -11,7 +11,7 @@
  * a "bad" track is expressed with `type: "negative"`, which changes how it is
  * presented, not how it is counted.
  *
- * @module pf2e-victory-counter/state
+ * @module victory-counter/state
  */
 
 import {

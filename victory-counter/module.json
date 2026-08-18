@@ -1,0 +1,37 @@
+{
+  "id": "victory-counter",
+  "title": "Victory Counter",
+  "description": "Shared, always-visible progress tracks for any game system. The GM creates any number of named tracks (e.g. Infiltration Points, Guard Awareness, Doomsday Device Activation), each with its own target, positive/negative polarity, optional progress ring, and player visibility. Every player sees the same live state on screen. System-agnostic: the module stores its entire state in its own settings and never reads or writes any world document.",
+  "version": "4.0.0",
+  "authors": [
+    {
+      "name": "Diego Vescovini",
+      "github": "sargas79"
+    }
+  ],
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14.366"
+  },
+  "esmodules": [
+    "scripts/module.js"
+  ],
+  "styles": [
+    "styles/victory-counter.css"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
+  "socket": false,
+  "url": "https://github.com/sargas79/Victory-Counter",
+  "readme": "https://github.com/sargas79/Victory-Counter#readme",
+  "bugs": "https://github.com/sargas79/Victory-Counter/issues",
+  "changelog": "https://github.com/sargas79/Victory-Counter/blob/main/victory-counter/CHANGELOG.md",
+  "license": "https://github.com/sargas79/Victory-Counter/blob/main/LICENSE",
+  "manifest": "https://github.com/sargas79/Victory-Counter/releases/latest/download/module.json",
+  "download": "https://github.com/sargas79/Victory-Counter/releases/download/v4.0.0/module.zip"
+}

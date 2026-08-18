@@ -1,9 +1,19 @@
 /**
- * Shared constants and small utilities for the PF2e Victory Counter module.
- * @module pf2e-victory-counter/constants
+ * Shared constants and small utilities for the Victory Counter module.
+ * @module victory-counter/constants
  */
 
-export const MODULE_ID = "pf2e-victory-counter";
+export const MODULE_ID = "victory-counter";
+
+/**
+ * The id this module shipped under up to and including 3.x, when it was
+ * packaged as a Pathfinder 2e-only module.
+ *
+ * Foundry namespaces settings by module id, so a world that used the old build
+ * still holds its tracks under this id. It is read exactly once, by the
+ * one-time import in `migration.js`, and never written to.
+ */
+export const LEGACY_MODULE_ID = "pf2e-victory-counter";
 
 /** Setting keys, namespaced under the module. */
 export const SETTINGS = Object.freeze({
@@ -15,6 +25,12 @@ export const SETTINGS = Object.freeze({
   SCHEMA: "schemaVersion",
   /** World scope. Verbatim copy of the pre-migration track array, written once. */
   LEGACY_BACKUP: "legacyBackup",
+  /**
+   * World scope. Whether the one-time import from the old `pf2e-victory-counter`
+   * module id has already run in this world. Set even when nothing was found,
+   * so the lookup happens once rather than on every load.
+   */
+  IMPORTED_LEGACY_MODULE: "importedLegacyModule",
   /** Client scope. Per-user local dismissal of the overlay. */
   OVERLAY_HIDDEN: "overlayHidden",
   /** Client scope. Per-user collapsed/expanded overlay state. */

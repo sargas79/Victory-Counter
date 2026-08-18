@@ -20,14 +20,14 @@
  * buttons and the data half of the API working even when a UI module is
  * unloadable, and turns a silent disappearance into an actionable notification.
  *
- * @module pf2e-victory-counter/hooks
+ * @module victory-counter/hooks
  */
 
 import { MODULE_ID, STATUS, log, logError, warn } from "./constants.js";
 import { exposeApi } from "./api.js";
 import { getTracks, sanitizeTracks } from "./state.js";
 import { registerSettings } from "./settings.js";
-import { runMigration } from "./migration.js";
+import { importLegacyModuleData, runMigration } from "./migration.js";
 
 /** Tracks the last status rendered per track id, so completions announce once. */
 const lastKnownStatus = new Map();
@@ -174,14 +174,14 @@ function onInit() {
   log("Initialized.");
 }
 
-/** `setup` — verify the game system and preload templates. */
+/**
+ * `setup` — preload templates.
+ *
+ * There is deliberately no game-system check. The module reads and writes only
+ * its own settings and never touches an Actor, Item or roll, so every system is
+ * equally supported and none needs special-casing.
+ */
 async function onSetup() {
-  if (game.system.id !== "pf2e") {
-    warn(
-      `This module targets the Pathfinder 2e system; the active system is "${game.system.id}". ` +
-        "The counter is system-agnostic and should still work, but it is untested here."
-    );
-  }
   try {
     await foundry.applications.handlebars.loadTemplates([
       `modules/${MODULE_ID}/templates/overlay.hbs`,
@@ -201,6 +201,14 @@ async function onSetup() {
  * has not yet logged in still renders correctly for players.
  */
 async function onReady() {
+  // Ordered: pull data over from the pre-4.0 module id first, so the schema
+  // migration below sees it and treats it like any other stored data.
+  try {
+    await importLegacyModuleData(sanitizeTracks);
+  } catch (err) {
+    logError("Import from the previous module id failed; continuing without it.", err);
+  }
+
   try {
     await runMigration(sanitizeTracks);
   } catch (err) {
@@ -209,7 +217,7 @@ async function onReady() {
 
   exposeApi();
   await refreshUI({ announce: false });
-  log(`Ready. PF2e system version: ${game.system.version}. Core: ${game.version}.`);
+  log(`Ready. Core: ${game.version}. System: ${game.system.id} ${game.system.version}.`);
 }
 
 /**

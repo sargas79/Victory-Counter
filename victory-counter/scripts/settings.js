@@ -1,6 +1,6 @@
 /**
  * Setting registration. Called once from the `init` hook.
- * @module pf2e-victory-counter/settings
+ * @module victory-counter/settings
  */
 
 import {
@@ -63,6 +63,16 @@ export function registerSettings(onStateChange, onLocalChange) {
     config: false,
     type: Object,
     default: {}
+  });
+
+  // Latch for the one-time import from the pre-4.0 `pf2e-victory-counter` id.
+  // Written whether or not anything was found, so the lookup runs exactly once.
+  game.settings.register(MODULE_ID, SETTINGS.IMPORTED_LEGACY_MODULE, {
+    name: "PVC.Settings.ImportedLegacyModule.Name",
+    scope: "world",
+    config: false,
+    type: Boolean,
+    default: false
   });
 
   // --- Per-user display preferences (client scope) ------------------------

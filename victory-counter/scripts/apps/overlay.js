@@ -14,7 +14,7 @@
  *   stays reachable no matter how many tracks are open.
  * - The grid only scrolls once it actually runs out of viewport height.
  *
- * @module pf2e-victory-counter/apps/overlay
+ * @module victory-counter/apps/overlay
  */
 
 import {
