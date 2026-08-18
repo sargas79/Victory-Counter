@@ -1,9 +1,9 @@
 /**
- * Public module API, exposed as `game.modules.get("pf2e-victory-counter").api`.
+ * Public module API, exposed as `game.modules.get("victory-counter").api`.
  * Every mutating method is GM-guarded inside the state layer, so macros written
  * by players fail safely with a notification rather than silently doing nothing.
  *
- * @module pf2e-victory-counter/api
+ * @module victory-counter/api
  */
 
 import { MODULE_ID, TRACK_TYPES, logError, warn } from "./constants.js";

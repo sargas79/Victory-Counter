@@ -12,12 +12,17 @@
  *    only, writes a verbatim backup of the pre-migration array first, and is
  *    idempotent: re-running it against already-migrated data is a no-op.
  *
+ * A third pass, {@link importLegacyModuleData}, runs before both of the above.
+ * It carries a world's tracks over from the pre-4.0 `pf2e-victory-counter`
+ * module id, which Foundry treats as a completely separate settings namespace.
+ *
  * Nothing here deletes a world flag, a setting, or a track record.
  *
- * @module pf2e-victory-counter/migration
+ * @module victory-counter/migration
  */
 
 import {
+  LEGACY_MODULE_ID,
   LIMITS,
   MODULE_ID,
   SCHEMA_VERSION,
@@ -62,6 +67,156 @@ function firstNumber(...values) {
     if (Number.isFinite(n)) return n;
   }
   return fallback;
+}
+
+/* -------------------------------------------- */
+/*  Import from the pre-4.0 module id           */
+/* -------------------------------------------- */
+
+/**
+ * Read a world-scoped setting belonging to the old module id.
+ *
+ * `game.settings.get` cannot be used: it only resolves keys that were
+ * registered this session, and the 3.x module is not installed any more. The
+ * Setting documents themselves are still in the world database, so the value is
+ * read straight out of the world settings collection instead.
+ *
+ * Read-only by construction — nothing in this file writes to the old namespace.
+ *
+ * @param {string} key Unqualified setting key, e.g. `"tracks"`.
+ * @returns {any} The stored value, or undefined when the setting was never written.
+ */
+function readLegacyWorldSetting(key) {
+  const storage = game.settings?.storage?.get?.("world");
+  if (!storage) return undefined;
+
+  const qualified = `${LEGACY_MODULE_ID}.${key}`;
+  const doc =
+    storage.getSetting?.(qualified) ??
+    (typeof storage.find === "function"
+      ? storage.find((setting) => setting?.key === qualified)
+      : undefined);
+  if (!doc) return undefined;
+
+  // Setting documents persist their value as a JSON string. Older cores and
+  // some shims hand back an already-parsed value, so both are accepted.
+  const raw = doc.value;
+  if (typeof raw !== "string") return raw;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Copy track data over from the pre-4.0 `pf2e-victory-counter` module id, once
+ * per world.
+ *
+ * Foundry namespaces settings by module id, so renaming the module to drop its
+ * system prefix would otherwise present every existing world as empty. This
+ * runs before {@link runMigration} and is deliberately conservative:
+ *
+ * - GM only, and exactly once — the latch is set even when nothing is found.
+ * - Never overwrites: if this module already has tracks of its own, the import
+ *   is skipped and only the latch is written.
+ * - Never deletes: the old settings are read and left exactly as they were, so
+ *   reinstalling the 3.x module recovers the original world unchanged.
+ *
+ * @param {(raw: any) => object[]} sanitizeTracks Injected to avoid a circular
+ *   import with the state layer.
+ * @returns {Promise<boolean>} Whether tracks were imported.
+ */
+export async function importLegacyModuleData(sanitizeTracks) {
+  if (!game.user.isGM) return false;
+
+  try {
+    if (game.settings.get(MODULE_ID, SETTINGS.IMPORTED_LEGACY_MODULE) === true) return false;
+  } catch (err) {
+    logError("Could not read the legacy import latch; skipping the import.", err);
+    return false;
+  }
+
+  /** Set the latch so the lookup is not repeated on every load. */
+  const latch = async () => {
+    try {
+      await game.settings.set(MODULE_ID, SETTINGS.IMPORTED_LEGACY_MODULE, true);
+    } catch (err) {
+      logError("Could not record that the legacy import has run.", err);
+    }
+  };
+
+  // Anything already stored under the new id wins. A world that has started
+  // using this module must never have its tracks replaced by stale ones.
+  let existing;
+  try {
+    existing = game.settings.get(MODULE_ID, SETTINGS.TRACKS);
+  } catch (err) {
+    logError("Could not read current track data; skipping the legacy import.", err);
+    return false;
+  }
+  if (Array.isArray(existing) && existing.length) {
+    log("Legacy import: this world already has tracks; leaving them alone.");
+    await latch();
+    return false;
+  }
+
+  const legacyTracks = readLegacyWorldSetting(SETTINGS.TRACKS);
+  if (!Array.isArray(legacyTracks) || !legacyTracks.length) {
+    log(`Legacy import: no data found under "${LEGACY_MODULE_ID}".`);
+    await latch();
+    return false;
+  }
+
+  const legacySchema = Number(readLegacyWorldSetting(SETTINGS.SCHEMA)) || 0;
+
+  // Back up the imported array verbatim before it is reshaped, for the same
+  // reason the schema migration does: the source namespace is not ours to
+  // depend on, and a hand-repair should not have to go looking for it.
+  try {
+    const backup = game.settings.get(MODULE_ID, SETTINGS.LEGACY_BACKUP);
+    if (!Array.isArray(backup?.tracks)) {
+      await game.settings.set(MODULE_ID, SETTINGS.LEGACY_BACKUP, {
+        schema: legacySchema,
+        tracks: foundry.utils.deepClone(legacyTracks),
+        timestamp: Date.now(),
+        source: LEGACY_MODULE_ID
+      });
+    }
+  } catch (err) {
+    logError("Could not back up the imported legacy track data.", err);
+  }
+
+  // sanitizeTracks migrates each record on the way through, so a world coming
+  // from a 1.x or 2.x install lands on the current schema in this single step.
+  const imported = sanitizeTracks(legacyTracks);
+
+  try {
+    await game.settings.set(MODULE_ID, SETTINGS.TRACKS, imported);
+    await game.settings.set(MODULE_ID, SETTINGS.SCHEMA, SCHEMA_VERSION);
+  } catch (err) {
+    logError("Failed to import track data from the previous module id.", err);
+    ui.notifications.error(game.i18n.localize("PVC.Notify.LegacyImportFailed"));
+    return false;
+  }
+
+  await latch();
+
+  log("Legacy import summary", {
+    from: LEGACY_MODULE_ID,
+    schema: legacySchema,
+    records: legacyTracks.length,
+    imported: imported.length,
+    dropped: Math.max(0, legacyTracks.length - imported.length)
+  });
+
+  if (imported.length) {
+    ui.notifications.info(
+      game.i18n.format("PVC.Notify.LegacyImported", { count: imported.length })
+    );
+  }
+
+  return imported.length > 0;
 }
 
 /**

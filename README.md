@@ -1,15 +1,19 @@
-# PF2e Victory Counter
+# Victory Counter
 
-A shared, always-visible progress counter for **Pathfinder 2e Remaster**
-subsystem challenges in **Foundry VTT v14**.
+A shared, always-visible progress counter for **any game system** in
+**Foundry VTT v14**.
 
 The GM creates any number of named tracks, gives each one a target and a
 positive or negative polarity, and adjusts progress as the scene plays out.
 Every player sees the same live state in a collapsible on-screen HUD.
 
-> The module folder is [`pf2e-victory-counter/`](pf2e-victory-counter) — that
-> name must match `module.json.id`, which is why it is a subfolder of this repo
-> rather than the repo root.
+It suits any subsystem built on "fill a bar before the other bar fills": PF2e
+infiltration and research points, D&D 5e skill challenges and clocks, Blades in
+the Dark progress clocks, chase trackers, doom counters, faction heat.
+
+> The module folder is [`victory-counter/`](victory-counter) — that name must
+> match `module.json.id`, which is why it is a subfolder of this repo rather
+> than the repo root.
 
 ## Features
 
@@ -37,6 +41,9 @@ Every player sees the same live state in a collapsible on-screen HUD.
 - **Hide from players.** Run a track the party cannot see; chat cards are
   whispered to GMs while it is hidden.
 - **Undo.** Every change stores a one-level snapshot that the GM can restore.
+- **System-agnostic.** No system is declared, detected or special-cased. The
+  module stores its entire state in its own settings and never reads a system's
+  actor, item or roll data, so it behaves identically everywhere.
 - **Macro API** for automation.
 
 ## Installation
@@ -50,20 +57,20 @@ Every player sees the same live state in a collapsible on-screen HUD.
 
 ### Local development
 
-Copy or symlink the `pf2e-victory-counter/` folder into your Foundry user data
+Copy or symlink the `victory-counter/` folder into your Foundry user data
 directory so the path is:
 
 ```
-<FoundryUserData>/Data/modules/pf2e-victory-counter/
+<FoundryUserData>/Data/modules/victory-counter/
 ```
 
-The folder name must be exactly `pf2e-victory-counter`. Restart Foundry, then
-enable **PF2e Victory Counter** in **Game Settings → Manage Modules**.
+The folder name must be exactly `victory-counter`. Restart Foundry, then enable
+**Victory Counter** in **Game Settings → Manage Modules**.
 
 On Windows, a symlink from an admin PowerShell prompt:
 
 ```powershell
-New-Item -ItemType SymbolicLink -Path "$env:LOCALAPPDATA\FoundryVTT\Data\modules\pf2e-victory-counter" -Target "C:\path\to\Victory-Counter\pf2e-victory-counter"
+New-Item -ItemType SymbolicLink -Path "$env:LOCALAPPDATA\FoundryVTT\Data\modules\victory-counter" -Target "C:\path\to\Victory-Counter\victory-counter"
 ```
 
 ## Usage
@@ -99,7 +106,7 @@ to keep counting past the finish line.
 - Use the chevron to collapse it to compact chips, or the `x` to hide it.
 - Reopen it from the **Token** scene controls (*Show/Hide Victory Counter*,
   trophy icon).
-- Anchor, width and scale live in **Game Settings → Configure Settings → PF2e
+- Anchor, width and scale live in **Game Settings → Configure Settings →
   Victory Counter** and are personal to you.
 
 Only the GM can create, rename, configure, retype, delete or adjust a track.
@@ -109,7 +116,7 @@ the target, the ring (when enabled) and the completion state.
 ### Macro API
 
 ```js
-const vc = game.modules.get("pf2e-victory-counter").api;
+const vc = game.modules.get("victory-counter").api;
 
 // A 6-step infiltration, and the alarm working against the party
 const infiltration = await vc.create({ title: "Infiltration Points", target: 6 });
@@ -162,73 +169,89 @@ Upgrading from 2.x migrates `successes → current` and
 preserves the failure fields under `legacy`. The migration is versioned and
 idempotent, writes a one-time verbatim backup to a hidden `legacyBackup`
 setting, and deletes nothing. See the
-[changelog](pf2e-victory-counter/CHANGELOG.md) for the full table.
+[changelog](victory-counter/CHANGELOG.md) for the full table.
 
 ## Manual test plan
 
-Run these in a v14 world with the current PF2e system. Everything except the
-two-client checks can be done in a single GM session.
+Run these in a v14 world under any system. Everything except the two-client
+checks can be done in a single GM session.
+
+**Upgrading from the PF2e-only build**
+
+1. In a world that ran 3.x as `pf2e-victory-counter`, disable that module,
+   install this one and reload as GM. The existing tracks appear, a notification
+   reports how many were imported, and the old module's settings are still
+   present in the world database untouched.
+2. Reload again. No second import notification, and the tracks are unchanged.
+3. In a world that has never had the old module, confirm the import is silent
+   and the world starts with no tracks.
 
 **Migration**
 
-1. With 2.x data present, load the world as GM. The tracks appear with their old
+4. With 2.x data present, load the world as GM. The tracks appear with their old
    success totals as the current value and their old required-successes as the
    target, all marked *Positive*, with no console errors.
-2. Enable **Debug Logging** and reload. The console prints one migration summary
+5. Enable **Debug Logging** and reload. The console prints one migration summary
    line; a second reload prints "already at schema 3 — nothing to do."
-3. Hand-edit a track's stored data to remove `target`, or set it to `null`. It
+6. Hand-edit a track's stored data to remove `target`, or set it to `null`. It
    reloads with a safe default instead of throwing.
 
 **Progress rules**
 
-4. Create a track. It defaults to **Positive**.
-5. Press `-` at 0. The value stays at 0.
-6. Fill a track to its target. The status reads **Complete** and the ring closes.
-7. Press `+` again. The increase is refused with a notification.
-8. Turn on **Allow Progress Beyond Target** and press `+`. The value rises past
-   the target; the ring stays visually full.
+7. Create a track. It defaults to **Positive**.
+8. Press `-` at 0. The value stays at 0.
+9. Fill a track to its target. The status reads **Complete** and the ring closes.
+10. Press `+` again. The increase is refused with a notification.
+11. Turn on **Allow Progress Beyond Target** and press `+`. The value rises past
+    the target; the ring stays visually full.
 
 **Polarity**
 
-9. Set a track to **Negative**. Its numbers, ring and badge turn red, in both
-   the HUD and the panel, and the badge reads "Negative" with a down arrow.
-10. Log in as a player. The negative track is red there too.
+12. Set a track to **Negative**. Its numbers, ring and badge turn red, in both
+    the HUD and the panel, and the badge reads "Negative" with a down arrow.
+13. Log in as a player. The negative track is red there too.
 
 **Rings**
 
-11. With rings on, check a track at 0 (empty ring), part-way (partial arc), and
+14. With rings on, check a track at 0 (empty ring), part-way (partial arc), and
     at/over target (full ring plus halo).
-12. Turn **Show Progress Rings** off. Every track falls back to the figure and
+15. Turn **Show Progress Rings** off. Every track falls back to the figure and
     bar; no layout breaks.
 
 **Layout and resizing**
 
-13. Open 1, 3, 4, 6 and 10 tracks in turn. At each count, drag the HUD's
+16. Open 1, 3, 4, 6 and 10 tracks in turn. At each count, drag the HUD's
     bottom-right grip from narrow to wide and confirm the cards reflow from one
     column to two to three.
-14. With 10 tracks open, confirm the resize grip is still visible and draggable.
-15. Confirm a scrollbar appears only when the cards actually reach the bottom of
+17. With 10 tracks open, confirm the resize grip is still visible and draggable.
+18. Confirm a scrollbar appears only when the cards actually reach the bottom of
     the screen, and disappears again when the HUD is widened.
-16. Open the control panel with 4+ tracks. Drag its bottom-right corner: it
+19. Open the control panel with 4+ tracks. Drag its bottom-right corner: it
     resizes, the cards reflow, and it refuses to go below 380×320.
-17. Add and remove a track with the panel open. It refits to the viewport rather
+20. Add and remove a track with the panel open. It refits to the viewport rather
     than growing off screen.
-18. Turn on **Reduce Motion** in the OS. Nothing animates; every state is still
+21. Turn on **Reduce Motion** in the OS. Nothing animates; every state is still
     readable.
 
 **Terminology**
 
-19. Search the HUD, panel, dialogs, chat cards and settings for the word
+22. Search the HUD, panel, dialogs, chat cards and settings for the word
     "successes". It should not appear.
 
 **Permissions and sync**
 
-20. As a player, try the API: `game.modules.get("pf2e-victory-counter").api
+23. As a player, try the API: `game.modules.get("victory-counter").api
     .increase(id)`. It is refused with a GM-only notification.
-21. With a GM and a player connected, change a track on the GM screen. The
+24. With a GM and a player connected, change a track on the GM screen. The
     player's HUD updates immediately without a reload.
-22. Hide a track from players. It disappears from the player HUD, and its chat
+25. Hide a track from players. It disappears from the player HUD, and its chat
     cards are whispered.
+
+**Systems**
+
+26. Load the same world under a different game system (or a second world running
+    one). The HUD, panel, chat cards and settings all behave identically and the
+    console stays clean.
 
 Console must stay clean throughout.
 
@@ -237,19 +260,26 @@ Console must stay clean throughout.
 The module writes **only** world-scoped settings for track data, the undo
 snapshot, the schema version and the pre-3.0 backup, plus per-user display
 preferences. It never creates, updates or deletes Actors, Items, Scenes,
-Journals, Effects or any other world document, and it never touches PF2e system
-data. Disabling or uninstalling the module leaves your world unchanged.
+Journals, Effects or any other world document, and it never touches any game
+system's data. Disabling or uninstalling the module leaves your world unchanged.
+
+Upgrading from the PF2e-only 3.x build reads the old `pf2e-victory-counter`
+settings once and copies the tracks across. It never writes to or deletes the
+old namespace, so reinstalling 3.x recovers the original world exactly as it
+was. Per-user display preferences (anchor, width, scale, collapsed state) are
+not carried over and are simply set again on first use.
 
 ## Compatibility
 
 | | |
 |---|---|
-| Foundry VTT | v14 (verified 14.365) |
-| Game system | Pathfinder 2e (Remaster) |
+| Foundry VTT | v14 (verified 14.366) |
+| Game system | Any — no system is declared or required |
 | Dependencies | None |
 
-The counter itself is system-agnostic; it is declared for and tested with PF2e
-only. If run under another system it logs a console warning and continues.
+The module declares no `relationships.systems` entry, so Foundry offers it in
+every world. It reads and writes only its own settings, which is what makes that
+safe rather than merely permitted.
 
 ## Design
 

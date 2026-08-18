@@ -1,14 +1,16 @@
 /**
- * PF2e Victory Counter — module entry point.
+ * Victory Counter — module entry point.
  *
- * A shared multi-track progress counter for Pathfinder 2e Remaster subsystem
- * challenges. The GM creates any number of named tracks and adjusts progress;
- * every player sees the same live state in a collapsible on-screen overlay.
+ * A shared multi-track progress counter for any game system. The GM creates any
+ * number of named tracks and adjusts progress; every player sees the same live
+ * state in a collapsible on-screen overlay.
  *
  * The module stores its entire state in world-scoped settings and never reads
- * or writes Actors, Items, Scenes, Journals or any other world document.
+ * or writes Actors, Items, Scenes, Journals or any other world document. That
+ * is what makes it system-agnostic: there is no system data to be compatible
+ * with, so no system needs to be declared, detected or special-cased.
  *
- * @module pf2e-victory-counter
+ * @module victory-counter
  */
 
 import { registerHooks } from "./hooks.js";
@@ -21,7 +23,7 @@ try {
   registerHooks();
 } catch (err) {
   console.error(
-    "[pf2e-victory-counter] Failed to register hooks. The module will not " +
+    "[victory-counter] Failed to register hooks. The module will not " +
       "appear in the scene controls. This usually means a module file is " +
       "damaged or was only partially deployed — reinstall the module folder.",
     err
