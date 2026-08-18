@@ -7,6 +7,10 @@
  * screens stay in sync without a custom socket. Only a GM may write, which
  * Foundry also enforces server-side.
  *
+ * A track measures progress toward one target. There is no failure counter:
+ * a "bad" track is expressed with `type: "negative"`, which changes how it is
+ * presented, not how it is counted.
+ *
  * @module pf2e-victory-counter/state
  */
 
@@ -17,25 +21,26 @@ import {
   SCHEMA_VERSION,
   SETTINGS,
   STATUS,
+  TRACK_TYPES,
   clampInt,
   generateId,
   log,
   logError
 } from "./constants.js";
+import { migrateTrackData } from "./migration.js";
 
 /**
  * @typedef {object} Track
- * @property {number}  schema             Persisted schema version.
- * @property {string}  id                 Stable identifier for this track.
- * @property {boolean} active             Whether the track is currently running.
- * @property {string}  title              GM-supplied track name.
- * @property {number}  successes          Current successes.
- * @property {number}  failures           Current failures.
- * @property {number}  requiredSuccesses  Successes needed to win.
- * @property {number}  requiredFailures   Failures that end the track in defeat.
- * @property {boolean} trackFailures      Whether the failure count is used at all.
- * @property {boolean} visibleToPlayers   Whether non-GM users may see this track.
- * @property {string}  status             One of STATUS.
+ * @property {number}  schema           Persisted schema version.
+ * @property {string}  id               Stable identifier for this track.
+ * @property {boolean} active           Whether the track is currently running.
+ * @property {string}  title            GM-supplied track name.
+ * @property {string}  type             One of TRACK_TYPES: "positive" | "negative".
+ * @property {number}  current          Current progress. Never negative.
+ * @property {number}  target           Progress needed to complete the track.
+ * @property {boolean} visibleToPlayers Whether non-GM users may see this track.
+ * @property {string}  status           One of STATUS.
+ * @property {object}  [legacy]         Verbatim pre-3.0 fields, never read at runtime.
  */
 
 /* -------------------------------------------- */
@@ -44,14 +49,16 @@ import {
 
 /**
  * Coerce arbitrary stored data into a valid Track.
- * Unknown keys are dropped, missing keys are backfilled from the defaults, and
- * every numeric field is clamped. This doubles as forward/backward migration.
- * @param {object} raw
+ * The record is migrated to the current shape first, then merged onto the
+ * defaults with `insertKeys: false` so unknown keys are dropped and missing
+ * keys are backfilled, then every field is clamped or coerced.
+ * @param {any} raw
  * @returns {Track}
  */
 export function sanitizeTrack(raw) {
   const base = foundry.utils.deepClone(DEFAULT_TRACK);
-  const merged = foundry.utils.mergeObject(base, raw ?? {}, {
+  const migrated = migrateTrackData(raw);
+  const merged = foundry.utils.mergeObject(base, migrated, {
     inplace: false,
     insertKeys: false,
     overwrite: true
@@ -60,46 +67,51 @@ export function sanitizeTrack(raw) {
   merged.schema = SCHEMA_VERSION;
   merged.id = String(merged.id || "").trim() || generateId();
   merged.active = merged.active === true;
-  merged.trackFailures = merged.trackFailures === true;
   merged.visibleToPlayers = merged.visibleToPlayers === true;
 
   merged.title = String(merged.title ?? "").slice(0, LIMITS.MAX_TITLE_LENGTH);
 
-  merged.requiredSuccesses = clampInt(
-    merged.requiredSuccesses,
-    LIMITS.MIN_REQUIRED,
-    LIMITS.MAX_REQUIRED
-  );
-  merged.requiredFailures = clampInt(
-    merged.requiredFailures,
-    LIMITS.MIN_REQUIRED,
-    LIMITS.MAX_REQUIRED
-  );
-  merged.successes = clampInt(merged.successes, 0, LIMITS.MAX_COUNT);
-  merged.failures = clampInt(merged.failures, 0, LIMITS.MAX_COUNT);
+  merged.type = Object.values(TRACK_TYPES).includes(merged.type)
+    ? merged.type
+    : TRACK_TYPES.POSITIVE;
+
+  merged.target = clampInt(merged.target, LIMITS.MIN_TARGET, LIMITS.MAX_TARGET);
+  // The floor of 0 here is the single guarantee that progress is never negative;
+  // every write path funnels through this function.
+  merged.current = clampInt(merged.current, 0, LIMITS.MAX_COUNT);
 
   const change = merged.lastChange ?? {};
   merged.lastChange = {
-    track: ["successes", "failures"].includes(change.track) ? change.track : "",
     delta: clampInt(change.delta ?? 0, -LIMITS.MAX_COUNT, LIMITS.MAX_COUNT),
     time: Number.isFinite(Number(change.time)) ? Number(change.time) : 0
   };
+
+  // `legacy` is opaque payload: keep a plain object or drop it entirely.
+  merged.legacy =
+    merged.legacy && typeof merged.legacy === "object" && !Array.isArray(merged.legacy)
+      ? merged.legacy
+      : null;
 
   merged.status = computeStatus(merged);
   return merged;
 }
 
 /**
- * Derive the resolution status from the counts.
- * Successes are evaluated first: if both thresholds are met in the same update,
- * the track is a win. This is a deliberate, documented tie-break.
+ * Derive the resolution status from the count.
  * @param {Track} t
  * @returns {string}
  */
 export function computeStatus(t) {
-  if (t.successes >= t.requiredSuccesses) return STATUS.WON;
-  if (t.trackFailures && t.failures >= t.requiredFailures) return STATUS.LOST;
-  return STATUS.RUNNING;
+  return t.current >= t.target ? STATUS.COMPLETE : STATUS.RUNNING;
+}
+
+/**
+ * Whether a track has reached its target.
+ * @param {Track} t
+ * @returns {boolean}
+ */
+export function isComplete(t) {
+  return computeStatus(t) === STATUS.COMPLETE;
 }
 
 /**
@@ -122,7 +134,7 @@ export function sanitizeTracks(raw) {
 }
 
 /**
- * All tracks, always sanitized, in display order.
+ * All tracks, always sanitized and migrated, in display order.
  * @returns {Track[]}
  */
 export function getTracks() {
@@ -161,6 +173,30 @@ export function getVisibleTracks() {
   return getTracks().filter((t) => canUserSee(t));
 }
 
+/**
+ * Whether the GM has allowed progress to be pushed past the target.
+ * @returns {boolean}
+ */
+export function allowsOvershoot() {
+  try {
+    return game.settings.get(MODULE_ID, SETTINGS.ALLOW_OVERSHOOT) === true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Whether progress rings are enabled for this world.
+ * @returns {boolean}
+ */
+export function ringsEnabled() {
+  try {
+    return game.settings.get(MODULE_ID, SETTINGS.SHOW_RINGS) === true;
+  } catch {
+    return false;
+  }
+}
+
 /* -------------------------------------------- */
 /*  Writing (GM only)                           */
 /* -------------------------------------------- */
@@ -173,6 +209,15 @@ function assertGM() {
   if (game.user.isGM) return true;
   ui.notifications.warn(game.i18n.localize("PVC.Notify.GMOnly"));
   return false;
+}
+
+/**
+ * A track's display name, for notifications and confirmations.
+ * @param {Track} track
+ * @returns {string}
+ */
+function displayName(track) {
+  return track?.title || game.i18n.localize("PVC.DefaultTitle");
 }
 
 /**
@@ -215,6 +260,7 @@ async function persistTracks(next, { snapshot = true, announceTrack, announcePre
 
 /**
  * Create a new track from a configuration object and add it to the list.
+ * New tracks are positive unless the caller says otherwise.
  * @param {Partial<Track>} config
  * @returns {Promise<Track|null>}
  */
@@ -229,12 +275,13 @@ export async function createTrack(config) {
   }
 
   const track = sanitizeTrack({
+    schema: SCHEMA_VERSION,
+    type: TRACK_TYPES.POSITIVE,
     ...config,
     id: generateId(),
     active: true,
-    successes: 0,
-    failures: 0,
-    lastChange: { track: "", delta: 0, time: 0 }
+    current: 0,
+    lastChange: { delta: 0, time: 0 }
   });
 
   const result = await persistTracks([...current, track], {
@@ -247,7 +294,7 @@ export async function createTrack(config) {
 }
 
 /**
- * Apply configuration changes to a track without resetting its counts.
+ * Apply configuration changes to a track without resetting its progress.
  * @param {string} id
  * @param {Partial<Track>} config
  * @returns {Promise<Track|null>}
@@ -268,20 +315,39 @@ export async function updateTrackConfig(id, config) {
 }
 
 /**
- * Adjust a track's success or failure count by a signed delta. Idempotent in
- * the sense that the resulting value is always derived from the stored value
- * and clamped, so a double click cannot push the counter out of range.
+ * Change a track's polarity. GM only; does not touch progress.
  * @param {string} id
- * @param {"successes"|"failures"} key
+ * @param {"positive"|"negative"} type
+ * @returns {Promise<Track|null>}
+ */
+export async function setTrackType(id, type) {
+  if (!assertGM()) return null;
+  if (!Object.values(TRACK_TYPES).includes(type)) {
+    logError(`Refusing to set unknown track type "${type}".`);
+    return null;
+  }
+  return updateTrackConfig(id, { type });
+}
+
+/**
+ * Adjust a track's progress by a signed delta. The resulting value is always
+ * derived from the stored value and clamped, so a double click cannot push the
+ * counter out of range, and it can never go below zero.
+ *
+ * When the world setting "allow progress beyond target" is off (the default),
+ * a track that has already reached its target refuses further increases with a
+ * notification, and a large increase is capped at the target rather than
+ * overshooting it. Decreases are always allowed, so a mistake is reversible.
+ *
+ * @param {string} id
  * @param {number} delta
  * @returns {Promise<Track|null>}
  */
-export async function adjustTrack(id, key, delta) {
+export async function adjustTrack(id, delta) {
   if (!assertGM()) return null;
-  if (!["successes", "failures"].includes(key)) {
-    logError(`Refusing to adjust unknown track field "${key}".`);
-    return null;
-  }
+
+  const amount = Number(delta);
+  if (!Number.isFinite(amount) || amount === 0) return getTrack(id);
 
   const current = getTracks();
   const track = current.find((t) => t.id === id);
@@ -289,22 +355,30 @@ export async function adjustTrack(id, key, delta) {
     ui.notifications.warn(game.i18n.localize("PVC.Notify.NoTrack"));
     return null;
   }
-  if (key === "failures" && !track.trackFailures) {
-    ui.notifications.warn(game.i18n.localize("PVC.Notify.FailuresDisabled"));
-    return null;
+
+  const overshoot = allowsOvershoot();
+  if (amount > 0 && !overshoot && isComplete(track)) {
+    ui.notifications.warn(
+      game.i18n.format("PVC.Notify.AlreadyComplete", { title: displayName(track) })
+    );
+    return track;
   }
 
-  const value = clampInt(track[key] + Number(delta), 0, LIMITS.MAX_COUNT);
-  if (value === track[key]) return track;
+  const ceiling = overshoot ? LIMITS.MAX_COUNT : Math.min(LIMITS.MAX_COUNT, track.target);
+  // A decrease is never blocked by the ceiling, even if the stored value is
+  // already above it (e.g. the GM turned overshoot off after going past target).
+  const upperBound = amount < 0 ? LIMITS.MAX_COUNT : ceiling;
+  const value = clampInt(track.current + amount, 0, upperBound);
+  if (value === track.current) return track;
 
-  const applied = value - track[key];
+  const applied = value - track.current;
   const updated = {
     ...track,
-    [key]: value,
-    lastChange: { track: key, delta: applied, time: Date.now() }
+    current: value,
+    status: computeStatus({ ...track, current: value }),
+    lastChange: { delta: applied, time: Date.now() }
   };
   const reason = game.i18n.format("PVC.Reason.Adjusted", {
-    track: game.i18n.localize(key === "successes" ? "PVC.Successes" : "PVC.Failures"),
     delta: applied > 0 ? `+${applied}` : String(applied)
   });
 
@@ -316,13 +390,12 @@ export async function adjustTrack(id, key, delta) {
 }
 
 /**
- * Set both counts of a track explicitly.
+ * Set a track's progress explicitly.
  * @param {string} id
- * @param {number} successes
- * @param {number} failures
+ * @param {number} value
  * @returns {Promise<Track|null>}
  */
-export async function setTrackCounts(id, successes, failures) {
+export async function setTrackCurrent(id, value) {
   if (!assertGM()) return null;
   const current = getTracks();
   const track = current.find((t) => t.id === id);
@@ -330,35 +403,42 @@ export async function setTrackCounts(id, successes, failures) {
     ui.notifications.warn(game.i18n.localize("PVC.Notify.NoTrack"));
     return null;
   }
-  const nextSuccesses = clampInt(successes, 0, LIMITS.MAX_COUNT);
-  const nextFailures = clampInt(failures, 0, LIMITS.MAX_COUNT);
-  const successDelta = nextSuccesses - track.successes;
-  const failureDelta = nextFailures - track.failures;
 
-  // Attribute the footer line to whichever field actually moved.
-  const key = successDelta !== 0 ? "successes" : failureDelta !== 0 ? "failures" : "";
-  const delta = successDelta !== 0 ? successDelta : failureDelta;
+  const overshoot = allowsOvershoot();
+  const ceiling = overshoot ? LIMITS.MAX_COUNT : Math.min(LIMITS.MAX_COUNT, track.target);
+  const requested = clampInt(value, 0, LIMITS.MAX_COUNT);
+  const next = Math.min(requested, ceiling);
+  if (next < requested) {
+    ui.notifications.warn(
+      game.i18n.format("PVC.Notify.CappedAtTarget", { target: track.target })
+    );
+  }
 
+  const delta = next - track.current;
   const updated = {
     ...track,
-    successes: nextSuccesses,
-    failures: nextFailures,
-    lastChange: key ? { track: key, delta, time: Date.now() } : track.lastChange
+    current: next,
+    status: computeStatus({ ...track, current: next }),
+    lastChange: delta === 0 ? track.lastChange : { delta, time: Date.now() }
   };
 
   const result = await persistTracks(
     current.map((t) => (t.id === id ? updated : t)),
-    { announceTrack: updated, announcePrevious: track, reason: game.i18n.localize("PVC.Reason.CountsSet") }
+    {
+      announceTrack: updated,
+      announcePrevious: track,
+      reason: game.i18n.localize("PVC.Reason.ProgressSet")
+    }
   );
   return result ? result.find((t) => t.id === id) ?? null : null;
 }
 
 /**
- * Reset a track's counts to zero, keeping its configuration.
+ * Reset a track's progress to zero, keeping its configuration.
  * @param {string} id
  * @returns {Promise<Track|null>}
  */
-export async function resetTrackCounts(id) {
+export async function resetTrackProgress(id) {
   if (!assertGM()) return null;
   const current = getTracks();
   const track = current.find((t) => t.id === id);
@@ -368,13 +448,16 @@ export async function resetTrackCounts(id) {
   }
   const updated = {
     ...track,
-    successes: 0,
-    failures: 0,
-    lastChange: { track: "", delta: 0, time: 0 }
+    current: 0,
+    lastChange: { delta: 0, time: 0 }
   };
   const result = await persistTracks(
     current.map((t) => (t.id === id ? updated : t)),
-    { announceTrack: updated, announcePrevious: track, reason: game.i18n.localize("PVC.Reason.Reset") }
+    {
+      announceTrack: updated,
+      announcePrevious: track,
+      reason: game.i18n.localize("PVC.Reason.Reset")
+    }
   );
   if (result) ui.notifications.info(game.i18n.localize("PVC.Notify.Reset"));
   return result ? result.find((t) => t.id === id) ?? null : null;
@@ -420,7 +503,7 @@ export async function moveTrack(id, direction) {
 }
 
 /**
- * Flip whether players can see a specific track. GM only; does not touch counts.
+ * Flip whether players can see a specific track. GM only; does not touch progress.
  * @param {string} id
  * @returns {Promise<Track|null>}
  */
@@ -517,8 +600,8 @@ async function postUpdateCard(track, previous, reason) {
         track,
         reason: reason ?? "",
         statusLabel: game.i18n.localize(`PVC.Status.${track.status}`),
-        successDelta: track.successes - previous.successes,
-        failureDelta: track.failures - previous.failures
+        typeLabel: game.i18n.localize(`PVC.Type.${track.type === TRACK_TYPES.NEGATIVE ? "Negative" : "Positive"}`),
+        delta: track.current - previous.current
       }
     );
 

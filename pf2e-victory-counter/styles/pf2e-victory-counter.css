@@ -6,9 +6,17 @@
    leak into core Foundry or PF2e system styling.
 
    Palette note: Nocturne is a mono-accent system with no danger role. The
-   accent carries progress toward victory; the failure counter uses the neutral
-   ramp so it reads as pressure without competing. --pvc-danger is the single
-   sanctioned extension, used only for the "challenge lost" treatment.
+   accent carries progress on a positive track. --pvc-negative is the single
+   sanctioned extension, used for negative-polarity tracks — and never on its
+   own: every negative track also carries a down-arrow icon and the written
+   word "Negative", so the distinction survives a colour-blind reader, a
+   greyscale display, and a screen reader.
+
+   Layout note: both the HUD and the control panel lay their cards out with
+   CSS Grid using `repeat(auto-fill, minmax(<min>, 1fr))`. Columns therefore
+   follow the container's own width — one column when narrow, two or three when
+   wide — and cards carry `min-width: 0` so their content can actually shrink
+   instead of forcing the grid wider than its container.
    ========================================================================== */
 
 .pvc {
@@ -34,8 +42,12 @@
   --pvc-divider: rgba(233, 233, 237, 0.16);
   --pvc-hairline: rgba(233, 233, 237, 0.08);
 
-  /* Extension beyond the design system — lost state only. */
-  --pvc-danger: #c2705f;
+  /* Extension beyond the design system — negative-polarity tracks only.
+     Measured at 5.81:1 against the composited card surface, past the 4.5:1
+     needed for the ring and figure numerals at any size they are drawn. */
+  --pvc-negative: #ef7f6e;
+  --pvc-negative-dim: rgba(239, 127, 110, 0.5);
+  --pvc-negative-glow: rgba(239, 127, 110, 0.42);
 
   --pvc-radius-sm: 4px;
   --pvc-radius-md: 8px;
@@ -48,11 +60,27 @@
   --pvc-mono: ui-monospace, Menlo, Consolas, monospace;
 
   --pvc-scale: 1;
+  /* HUD surface width, written by the resize grip / the width setting. */
+  --pvc-width: 320px;
+  /* Smallest a track card may become before the grid drops a column. */
+  --pvc-card-min: 232px;
 }
 
 @keyframes pvcGlow {
   0%, 100% { box-shadow: 0 0 0 1px var(--pvc-accent-800), 0 0 18px rgba(145, 132, 217, 0.18); }
   50%      { box-shadow: 0 0 0 1px var(--pvc-accent-700), 0 0 30px rgba(145, 132, 217, 0.34); }
+}
+
+/* The interface must be fully understandable without motion: the completion
+   glow, the bar transition and the ring sweep are decoration on top of a state
+   that is already spelled out in text and in the ring's geometry. */
+@media (prefers-reduced-motion: reduce) {
+  .pvc *,
+  .pvc *::before,
+  .pvc *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 /* --------------------------------------------------------------------------
@@ -86,12 +114,22 @@
   cursor: grabbing;
 }
 
+#pvc-overlay.pvc-resizing {
+  user-select: none;
+  cursor: ew-resize;
+}
+
 /* --------------------------------------------------------------------------
    Expanded panel (1a)
    -------------------------------------------------------------------------- */
 
 #pvc-overlay .pvc-panel-surface {
-  width: 296px;
+  display: flex;
+  flex-direction: column;
+  /* Width is user-controlled; the viewport clamp keeps a stale wide value from
+     pushing the HUD off screen. */
+  width: var(--pvc-width, 320px);
+  max-width: calc(100vw - 24px);
   border-radius: var(--pvc-radius-md);
   background: rgba(35, 37, 50, 0.94);
   backdrop-filter: blur(8px);
@@ -105,6 +143,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: none;
   padding: 6px 8px 6px 6px;
   background: linear-gradient(#2a2c3a, #1e2030);
   border-bottom: 1px solid var(--pvc-neutral-800);
@@ -182,37 +221,43 @@
   transform: rotate(-40deg);
 }
 
-/* --- Body ------------------------------------------------------------ */
+/* --------------------------------------------------------------------------
+   Track grid — the reflowing card collection
+   -------------------------------------------------------------------------- */
 
-#pvc-overlay .pvc-body {
-  padding: 14px 14px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-#pvc-overlay .pvc-track-stack {
-  display: flex;
-  flex-direction: column;
-  max-height: min(70vh, 620px);
+#pvc-overlay .pvc-track-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--pvc-card-min), 1fr));
+  gap: 1px;
+  /* The hairline between cards is the gap showing through. */
+  background: var(--pvc-hairline);
+  /* Grow with the content; only start scrolling once the HUD has genuinely run
+     out of viewport. Three tracks, ten tracks — same rule. */
+  min-height: 0;
+  max-height: calc(100vh - 150px);
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
-#pvc-overlay .pvc-track-stack .pvc-body {
-  border-top: 1px solid var(--pvc-hairline);
+#pvc-overlay .pvc-card {
+  /* Without this a long track name would set the column's minimum width and
+     the grid would refuse to shrink. */
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 13px 11px;
+  background: rgba(35, 37, 50, 0.94);
 }
 
-#pvc-overlay .pvc-track-stack .pvc-body:first-child {
-  border-top: none;
-}
-
-#pvc-overlay .pvc-track-header {
+#pvc-overlay .pvc-card-header {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
-#pvc-overlay .pvc-track-title {
+#pvc-overlay .pvc-card-title {
   flex: 1;
   min-width: 0;
   font: 500 12px/1.3 var(--pvc-font);
@@ -222,29 +267,58 @@
   text-overflow: ellipsis;
 }
 
-#pvc-overlay .pvc-track-header .pvc-chrome-btn {
+#pvc-overlay .pvc-card-header .pvc-chrome-btn {
   width: 18px;
   height: 18px;
 }
 
-#pvc-overlay .pvc-track-header .pvc-chrome-btn svg { width: 12px; height: 12px; }
+#pvc-overlay .pvc-card-header .pvc-chrome-btn svg { width: 12px; height: 12px; }
 
-#pvc-overlay .pvc-counter {
+#pvc-overlay .pvc-meta {
   display: flex;
-  flex-direction: column;
-  gap: 9px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
-#pvc-overlay .pvc-counter-failure {
-  padding-top: 11px;
-  border-top: 1px solid var(--pvc-hairline);
+/* --- Polarity badge --------------------------------------------------- */
+
+.pvc .pvc-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  padding: 1px 7px 1px 5px;
+  border: 1px solid currentcolor;
+  border-radius: 99px;
+  font: 500 9px/1.7 var(--pvc-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pvc-accent-300);
+  white-space: nowrap;
 }
+
+.pvc .pvc-negative .pvc-type-badge,
+.pvc .pvc-type-badge.pvc-negative { color: var(--pvc-negative); }
+
+.pvc .pvc-type-mark {
+  display: inline-flex;
+  flex: none;
+  color: var(--pvc-accent-300);
+}
+
+.pvc .pvc-type-badge .pvc-type-mark { color: inherit; }
+.pvc .pvc-negative .pvc-type-mark { color: var(--pvc-negative); }
+.pvc .pvc-type-mark svg { width: 9px; height: 9px; display: block; }
+
+/* --- Linear readout (rings disabled) ---------------------------------- */
 
 #pvc-overlay .pvc-readout {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 8px;
+  min-width: 0;
 }
 
 #pvc-overlay .pvc-figure {
@@ -255,11 +329,15 @@
 }
 
 #pvc-overlay .pvc-figure-value {
-  font: 500 40px/1 var(--pvc-font);
+  font: 500 36px/1 var(--pvc-font);
   letter-spacing: -0.03em;
   color: var(--pvc-text);
   font-variant-numeric: tabular-nums;
 }
+
+/* Polarity: a negative track's progress numbers are red rather than white.
+   Every user sees this — the rule is not gated on the GM class. */
+#pvc-overlay .pvc-negative .pvc-figure-value { color: var(--pvc-negative); }
 
 #pvc-overlay .pvc-figure-target {
   font: 400 13px/1 var(--pvc-font);
@@ -274,16 +352,14 @@
   color: var(--pvc-neutral-500);
   padding-bottom: 4px;
   white-space: nowrap;
+  flex: none;
 }
 
-/* The failure counter is quieter by one step across the board. */
-#pvc-overlay .pvc-counter-failure .pvc-figure-value { font-size: 28px; color: var(--pvc-neutral-400); }
-#pvc-overlay .pvc-counter-failure .pvc-kicker { color: var(--pvc-neutral-600); }
-
-/* --- Progress tracks ------------------------------------------------- */
+/* --- Progress bars ---------------------------------------------------- */
 
 #pvc-overlay .pvc-track {
   height: 5px;
+  min-width: 0;
   border-radius: 3px;
   background: var(--pvc-neutral-900);
   overflow: hidden;
@@ -297,17 +373,101 @@
   transition: width 220ms ease;
 }
 
-#pvc-overlay .pvc-counter-failure .pvc-track { height: 4px; }
-
-#pvc-overlay .pvc-counter-failure .pvc-track-fill {
-  background: var(--pvc-neutral-600);
-  box-shadow: none;
+#pvc-overlay .pvc-negative .pvc-track-fill {
+  background: var(--pvc-negative);
+  box-shadow: 0 0 10px var(--pvc-negative-glow);
 }
 
-#pvc-overlay .pvc-body.pvc-lost .pvc-counter-failure .pvc-track-fill {
-  background: var(--pvc-danger);
-  box-shadow: 0 0 10px rgba(194, 112, 95, 0.45);
+/* --------------------------------------------------------------------------
+   Progress ring — SVG + CSS only, no charting dependency
+   -------------------------------------------------------------------------- */
+
+.pvc .pvc-ring-wrap {
+  display: flex;
+  justify-content: center;
+  min-width: 0;
 }
+
+.pvc .pvc-ring {
+  position: relative;
+  /* Scales with the card, with a floor that keeps the centre numerals legible
+     and a ceiling that stops it dominating a wide single-column HUD. */
+  width: clamp(84px, 58%, 128px);
+  aspect-ratio: 1;
+  flex: none;
+}
+
+.pvc .pvc-ring-compact .pvc-ring { width: clamp(64px, 40%, 92px); }
+
+.pvc .pvc-ring-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  /* Start the sweep at twelve o'clock. */
+  transform: rotate(-90deg);
+}
+
+.pvc .pvc-ring-groove,
+.pvc .pvc-ring-value {
+  fill: none;
+  stroke-width: 9;
+}
+
+.pvc .pvc-ring-groove { stroke: var(--pvc-neutral-900); }
+
+.pvc .pvc-ring-value {
+  stroke: var(--pvc-accent);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 260ms ease, stroke 160ms ease;
+}
+
+.pvc .pvc-ring-negative .pvc-ring-value { stroke: var(--pvc-negative); }
+
+/* At 0% the dash offset equals the full circumference, so nothing is drawn.
+   `stroke-linecap: round` would otherwise leave a dot at twelve o'clock. */
+.pvc .pvc-ring[data-percent="0"] .pvc-ring-value { stroke-linecap: butt; }
+
+/* Completion: the ring closes and picks up a halo, alongside the "Complete"
+   badge. The halo is decoration; the badge carries the meaning. */
+.pvc .pvc-ring-complete .pvc-ring-value {
+  stroke: var(--pvc-accent-300);
+  filter: drop-shadow(0 0 4px rgba(210, 206, 253, 0.55));
+}
+
+.pvc .pvc-ring-complete.pvc-ring-negative .pvc-ring-value {
+  stroke: var(--pvc-negative);
+  filter: drop-shadow(0 0 5px var(--pvc-negative-glow));
+}
+
+.pvc .pvc-ring-readout {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.pvc .pvc-ring-current {
+  font: 500 clamp(19px, 26cqw, 30px) / 1 var(--pvc-font);
+  letter-spacing: -0.02em;
+  color: var(--pvc-text);
+}
+
+.pvc .pvc-ring-divider,
+.pvc .pvc-ring-target {
+  font: 400 clamp(10px, 13cqw, 14px) / 1 var(--pvc-font);
+  color: var(--pvc-neutral-600);
+}
+
+/* Polarity: red progress numerals inside the ring, for every user. */
+.pvc .pvc-ring-negative .pvc-ring-current { color: var(--pvc-negative); }
+
+/* `cqw` above needs a query container; without one the clamp falls back to the
+   preferred value, which is still within the min/max, so this is progressive. */
+.pvc .pvc-ring { container-type: inline-size; }
 
 /* --- GM controls ----------------------------------------------------- */
 
@@ -315,6 +475,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
 }
 
 #pvc-overlay .pvc-step {
@@ -376,6 +537,7 @@
   display: flex;
   align-items: center;
   gap: 7px;
+  min-width: 0;
   padding-top: 8px;
   border-top: 1px solid var(--pvc-hairline);
   font: 400 10.5px/1.5 var(--pvc-font);
@@ -389,13 +551,14 @@
   color: var(--pvc-neutral-600);
   white-space: nowrap;
   flex: none;
+  margin-left: auto;
 }
 
-#pvc-overlay .pvc-status-won { color: var(--pvc-accent-300); }
-#pvc-overlay .pvc-status-lost { color: var(--pvc-danger); }
+#pvc-overlay .pvc-status-complete { color: var(--pvc-accent-300); }
+#pvc-overlay .pvc-negative .pvc-status-complete { color: var(--pvc-negative); }
 
-#pvc-overlay .pvc-log-delta { color: var(--pvc-accent-300); font-family: var(--pvc-mono); }
-#pvc-overlay .pvc-counter-failure ~ .pvc-footer .pvc-log-delta { color: var(--pvc-accent-300); }
+#pvc-overlay .pvc-log-delta { color: var(--pvc-accent-300); font-family: var(--pvc-mono); flex: none; }
+#pvc-overlay .pvc-negative .pvc-log-delta { color: var(--pvc-negative); }
 
 #pvc-overlay .pvc-log-text {
   min-width: 0;
@@ -408,16 +571,60 @@
   margin-left: auto;
   font-family: var(--pvc-mono);
   white-space: nowrap;
+  flex: none;
 }
 
-/* --- Resolved states -------------------------------------------------- */
+/* --- Completed state -------------------------------------------------- */
 
-#pvc-overlay .pvc-body.pvc-won {
+#pvc-overlay .pvc-card.pvc-complete {
   animation: pvcGlow 3.6s ease-in-out infinite;
 }
 
-#pvc-overlay .pvc-body.pvc-lost {
-  box-shadow: inset 0 0 0 1px var(--pvc-danger);
+#pvc-overlay .pvc-card.pvc-complete.pvc-negative {
+  animation: none;
+  box-shadow: inset 0 0 0 1px var(--pvc-negative-dim);
+}
+
+/* --- Resize strip ----------------------------------------------------- */
+
+#pvc-overlay .pvc-resize-strip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  height: 18px;
+  padding: 0 4px 0 9px;
+  background: linear-gradient(#1e2030, #191b28);
+  border-top: 1px solid var(--pvc-neutral-800);
+}
+
+#pvc-overlay .pvc-strip-count {
+  flex: 1;
+  font: 400 9px/1 var(--pvc-mono);
+  letter-spacing: 0.1em;
+  color: var(--pvc-neutral-700);
+}
+
+#pvc-overlay .pvc-resize-grip {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border-radius: var(--pvc-radius-sm);
+  color: var(--pvc-neutral-600);
+  cursor: ew-resize;
+  touch-action: none;
+}
+
+#pvc-overlay .pvc-resize-grip svg { width: 11px; height: 11px; }
+#pvc-overlay .pvc-resize-grip:hover,
+#pvc-overlay .pvc-resize-grip:focus-visible {
+  background: rgba(233, 233, 237, 0.1);
+  color: var(--pvc-neutral-400);
 }
 
 /* --------------------------------------------------------------------------
@@ -428,6 +635,8 @@
   display: flex;
   flex-direction: column;
   gap: 5px;
+  width: var(--pvc-width, 320px);
+  max-width: calc(100vw - 24px);
 }
 
 #pvc-overlay .pvc-compact-bar {
@@ -435,7 +644,6 @@
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  width: 244px;
   height: 20px;
   padding: 0 6px;
   border-radius: var(--pvc-radius-sm);
@@ -447,8 +655,8 @@
 #pvc-overlay .pvc-compact {
   display: flex;
   align-items: center;
-  gap: 9px;
-  width: 244px;
+  gap: 8px;
+  min-width: 0;
   height: 28px;
   padding: 0 9px;
   border-radius: var(--pvc-radius-md);
@@ -463,7 +671,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 74px;
+  max-width: 96px;
   flex: none;
 }
 
@@ -482,43 +690,27 @@
   flex: none;
 }
 
+#pvc-overlay .pvc-compact.pvc-negative .pvc-compact-value { color: var(--pvc-negative); }
+
 #pvc-overlay .pvc-compact-target {
   font: 400 10px/1 var(--pvc-font);
   color: var(--pvc-neutral-600);
   flex: none;
 }
 
-#pvc-overlay .pvc-compact-track {
+#pvc-overlay .pvc-compact .pvc-track {
   flex: 1;
   min-width: 0;
   height: 3px;
-  border-radius: 2px;
-  background: var(--pvc-neutral-900);
-  overflow: hidden;
 }
 
-#pvc-overlay .pvc-compact-fill {
-  height: 100%;
-  background: var(--pvc-accent);
-  transition: width 220ms ease;
-}
+#pvc-overlay .pvc-compact .pvc-track-fill { box-shadow: none; }
 
-#pvc-overlay .pvc-compact-divider {
-  width: 1px;
-  height: 12px;
-  background: var(--pvc-divider);
-  flex: none;
+#pvc-overlay .pvc-compact.pvc-complete { animation: pvcGlow 3.6s ease-in-out infinite; }
+#pvc-overlay .pvc-compact.pvc-complete.pvc-negative {
+  animation: none;
+  box-shadow: var(--pvc-shadow), inset 0 0 0 1px var(--pvc-negative-dim);
 }
-
-#pvc-overlay .pvc-compact-failures {
-  font: 400 10px/1 var(--pvc-mono);
-  letter-spacing: 0.06em;
-  color: var(--pvc-neutral-500);
-  flex: none;
-}
-
-#pvc-overlay .pvc-compact.pvc-lost .pvc-compact-failures { color: var(--pvc-danger); }
-#pvc-overlay .pvc-compact.pvc-won { animation: pvcGlow 3.6s ease-in-out infinite; }
 
 #pvc-overlay .pvc-ghost-btn {
   all: unset;
@@ -543,38 +735,65 @@
    GM control panel — Nocturne inside a standard Foundry window
    -------------------------------------------------------------------------- */
 
+/* Minimum window size. The browser honours min-width/min-height over the inline
+   width/height ApplicationV2 writes during a drag-resize, so this is what stops
+   the window collapsing; setPosition() clamps the persisted value to match. */
+.application.pvc-panel {
+  min-width: 380px;
+  min-height: 320px;
+}
+
 .pvc-panel .window-content,
 .application.pvc-panel .window-content {
   background: var(--pvc-bg);
   color: var(--pvc-text);
   font-family: var(--pvc-font);
+  /* The content area is the only scroll container, and only when the window is
+     genuinely too short for its content. */
+  overflow: hidden auto;
+  padding: 10px;
 }
 
-.pvc-panel .pvc-panel-status {
-  margin-bottom: 10px;
-  padding: 9px 11px;
-  border-radius: var(--pvc-radius-md);
-  background: var(--pvc-surface);
-  box-shadow: 0 0 0 1px var(--pvc-neutral-800);
+.pvc-panel .pvc-panel-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
 }
 
 .pvc-panel .pvc-panel-status-line {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
   color: var(--pvc-text);
 }
 
-.pvc-panel .pvc-track-row {
-  padding: 9px 11px;
-  margin-bottom: 9px;
+/* --- Track card grid -------------------------------------------------- */
+
+.pvc-panel .pvc-track-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+  gap: 9px;
+  align-items: start;
+  min-width: 0;
+}
+
+.pvc-panel .pvc-track-card {
+  min-width: 0;
+  padding: 9px 11px 11px;
   border-radius: var(--pvc-radius-md);
   background: var(--pvc-surface);
   box-shadow: 0 0 0 1px var(--pvc-neutral-800);
 }
 
-.pvc-panel .pvc-track-row:last-of-type { margin-bottom: 0; }
+.pvc-panel .pvc-track-card.pvc-resolved {
+  box-shadow: 0 0 0 1px var(--pvc-accent-700);
+}
+
+.pvc-panel .pvc-track-card.pvc-resolved.pvc-negative {
+  box-shadow: 0 0 0 1px var(--pvc-negative-dim);
+}
 
 .pvc-panel .pvc-row-move {
   display: flex;
@@ -588,15 +807,6 @@
   padding: 0;
 }
 
-.pvc-panel .pvc-panel-status-counts {
-  display: flex;
-  gap: 16px;
-  margin-top: 5px;
-  font-variant-numeric: tabular-nums;
-  color: var(--pvc-neutral-400);
-  font-size: 12.5px;
-}
-
 .pvc-panel .pvc-badge {
   padding: 2px 9px;
   border-radius: 99px;
@@ -607,8 +817,8 @@
 }
 
 .pvc-panel .pvc-badge-running { color: var(--pvc-neutral-500); }
-.pvc-panel .pvc-badge-won { color: var(--pvc-accent-300); }
-.pvc-panel .pvc-badge-lost { color: var(--pvc-danger); }
+.pvc-panel .pvc-badge-complete { color: var(--pvc-accent-300); }
+.pvc-panel .pvc-negative .pvc-badge-complete { color: var(--pvc-negative); }
 
 .pvc-panel .notes,
 .pvc-panel .hint {
@@ -621,7 +831,10 @@
   border-radius: var(--pvc-radius-md);
   padding: 4px 11px 11px;
   margin-bottom: 10px;
+  min-width: 0;
 }
+
+.pvc-panel fieldset:last-of-type { margin-bottom: 0; }
 
 .pvc-panel legend {
   padding: 0 6px;
@@ -633,16 +846,37 @@
 
 .pvc-panel label { color: var(--pvc-neutral-400); }
 
+/* Field rows wrap on their own so a narrow window never clips an input. */
+.pvc-panel .pvc-field-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  min-width: 0;
+}
+
+.pvc-panel .pvc-field-row .form-group {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+.pvc-panel .pvc-field-row .pvc-field-narrow {
+  flex: 0 1 104px;
+}
+
 .pvc-panel input[type="text"],
-.pvc-panel input[type="number"] {
+.pvc-panel input[type="number"],
+.pvc-panel select {
   color: var(--pvc-text);
   background: var(--pvc-surface-2);
   border: 1px solid var(--pvc-neutral-800);
   border-radius: var(--pvc-radius-md);
+  min-width: 0;
 }
 
 .pvc-panel input[type="text"]:focus,
-.pvc-panel input[type="number"]:focus {
+.pvc-panel input[type="number"]:focus,
+.pvc-panel select:focus {
   border-color: var(--pvc-accent);
   box-shadow: none;
   outline: none;
@@ -651,12 +885,15 @@
 .pvc-panel .pvc-stepper {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   margin: 6px 0;
+  min-width: 0;
 }
 
 .pvc-panel .pvc-stepper-label {
   flex: 1 1 auto;
+  min-width: 0;
   font: 400 10px/1 var(--pvc-mono);
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -664,12 +901,15 @@
 }
 
 .pvc-panel .pvc-stepper-value {
-  min-width: 76px;
+  min-width: 68px;
   text-align: center;
   font: 500 15px/1 var(--pvc-font);
   font-variant-numeric: tabular-nums;
   color: var(--pvc-text);
 }
+
+/* Polarity: red progress numbers in the GM panel too. */
+.pvc-panel .pvc-negative .pvc-stepper-value { color: var(--pvc-negative); }
 
 .pvc-panel button {
   font: 500 11.5px/1 var(--pvc-font);
@@ -697,11 +937,13 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 11px;
+  margin-top: 9px;
+  min-width: 0;
 }
 
 .pvc-panel .pvc-panel-actions button {
   flex: 1 1 auto;
+  min-width: 0;
   height: 28px;
 }
 
@@ -713,11 +955,11 @@
 .pvc-panel .pvc-primary:hover { background: rgba(145, 132, 217, 0.12); }
 
 .pvc-panel .pvc-danger {
-  color: var(--pvc-danger);
-  border-color: var(--pvc-danger);
+  color: var(--pvc-negative);
+  border-color: var(--pvc-negative);
 }
 
-.pvc-panel .pvc-danger:hover { background: rgba(194, 112, 95, 0.12); }
+.pvc-panel .pvc-danger:hover { background: rgba(239, 127, 110, 0.12); }
 
 .pvc-panel button[disabled] { opacity: 0.4; cursor: default; }
 
@@ -737,26 +979,32 @@
   margin-bottom: 5px;
 }
 
+.pvc-chat-card .pvc-chat-type {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+.pvc-chat-card.pvc-negative .pvc-chat-type { color: #b4402c; opacity: 1; }
+
 .pvc-chat-card .pvc-chat-reason {
   margin: 0 0 5px;
   font-style: italic;
   opacity: 0.8;
 }
 
-.pvc-chat-card .pvc-chat-counts {
-  list-style: none;
+.pvc-chat-card .pvc-chat-progress {
   margin: 0;
-  padding: 0;
-}
-
-.pvc-chat-card .pvc-chat-counts li {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  font-size: 15px;
   font-variant-numeric: tabular-nums;
 }
 
-.pvc-chat-card .pvc-chat-delta { opacity: 0.7; }
+.pvc-chat-card.pvc-negative .pvc-chat-progress strong { color: #b4402c; }
+
+.pvc-chat-card .pvc-chat-delta { opacity: 0.7; font-size: 12px; }
 
 .pvc-chat-card .pvc-chat-result {
   margin-top: 6px;
@@ -766,14 +1014,11 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   border-radius: var(--pvc-radius-sm, 4px);
-}
-
-.pvc-chat-card.pvc-won .pvc-chat-result {
   background: rgba(145, 132, 217, 0.18);
   border: 1px solid #9184d9;
 }
 
-.pvc-chat-card.pvc-lost .pvc-chat-result {
-  background: rgba(194, 112, 95, 0.18);
-  border: 1px solid #c2705f;
+.pvc-chat-card.pvc-negative .pvc-chat-result {
+  background: rgba(180, 64, 44, 0.16);
+  border-color: #b4402c;
 }

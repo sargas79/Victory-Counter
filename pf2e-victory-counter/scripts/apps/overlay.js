@@ -1,37 +1,46 @@
 /**
- * The shared Victory Points HUD every user sees, listing every track the
- * current user is allowed to see as a stacked list of cards.
+ * The shared progress HUD every user sees, listing every track the current user
+ * is allowed to see as a reflowing grid of cards.
  *
  * Implemented as an ApplicationV2 with `window.frame = false` and
  * `window.positioned = false`, so Foundry renders the element but leaves
- * placement to CSS plus the drag handler below. Layout follows variant 1a of
- * the Nocturne "Victory Points HUD" design, with the 1e compact bar as the
- * collapsed state, repeated once per track.
+ * placement to CSS plus the drag handler below.
+ *
+ * Layout notes:
+ * - The card collection is a CSS Grid (`auto-fill` + `minmax`), so the HUD
+ *   reflows into one, two or three columns purely from its own width.
+ * - The HUD's width is a per-user client setting, adjusted with the resize grip
+ *   in the bottom-right corner. The grip lives outside the scrolling grid, so it
+ *   stays reachable no matter how many tracks are open.
+ * - The grid only scrolls once it actually runs out of viewport height.
  *
  * @module pf2e-victory-counter/apps/overlay
  */
 
-import { MODULE_ID, OVERLAY_POSITIONS, SETTINGS, clampInt, log } from "../constants.js";
+import {
+  LIMITS,
+  MODULE_ID,
+  OVERLAY_POSITIONS,
+  RING,
+  SETTINGS,
+  STATUS,
+  TRACK_TYPES,
+  clampInt,
+  log,
+  progressPercent,
+  ringDashOffset
+} from "../constants.js";
 import {
   adjustTrack,
   getVisibleTracks,
   hasUndo,
-  setTrackCounts,
+  ringsEnabled,
+  setTrackCurrent,
   toggleTrackVisibility,
   undo
 } from "../state.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
-
-/**
- * @param {number} value
- * @param {number} required
- * @returns {number} A 0-100 percentage, clamped.
- */
-function percent(value, required) {
-  if (!required) return 0;
-  return Math.min(100, Math.max(0, Math.round((value / required) * 100)));
-}
 
 export class VictoryCounterOverlay extends HandlebarsApplicationMixin(ApplicationV2) {
   /** @override */
@@ -66,19 +75,39 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
   async _prepareContext(_options) {
     const isGM = game.user.isGM;
     const collapsed = game.settings.get(MODULE_ID, SETTINGS.OVERLAY_COLLAPSED) === true;
-    const tracks = getVisibleTracks().map((track) => ({
-      ...track,
-      displayTitle: track.title || game.i18n.localize("PVC.DefaultTitle"),
-      successPercent: percent(track.successes, track.requiredSuccesses),
-      failurePercent: percent(track.failures, track.requiredFailures),
-      statusLabel: game.i18n.localize(`PVC.Status.${track.status}`),
-      lastChange: this.#formatLastChange(track)
-    }));
+    const rings = ringsEnabled();
+
+    const tracks = getVisibleTracks().map((track) => {
+      const percent = progressPercent(track.current, track.target);
+      const negative = track.type === TRACK_TYPES.NEGATIVE;
+      return {
+        ...track,
+        displayTitle: track.title || game.i18n.localize("PVC.DefaultTitle"),
+        percent: Math.round(percent),
+        ringOffset: ringDashOffset(percent),
+        negative,
+        typeLabel: game.i18n.localize(negative ? "PVC.Type.Negative" : "PVC.Type.Positive"),
+        typeTooltip: game.i18n.localize(
+          negative ? "PVC.Type.NegativeHint" : "PVC.Type.PositiveHint"
+        ),
+        progressLabel: game.i18n.format("PVC.Aria.Progress", {
+          title: track.title || game.i18n.localize("PVC.DefaultTitle"),
+          type: game.i18n.localize(negative ? "PVC.Type.Negative" : "PVC.Type.Positive"),
+          current: track.current,
+          target: track.target
+        }),
+        complete: track.status === STATUS.COMPLETE,
+        statusLabel: game.i18n.localize(`PVC.Status.${track.status}`),
+        lastChange: this.#formatLastChange(track)
+      };
+    });
 
     return {
       tracks,
       collapsed,
       isGM,
+      rings,
+      ring: RING,
       canUndo: hasUndo()
     };
   }
@@ -86,16 +115,13 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
   /**
    * Format a track's footer log line, or null when nothing has been recorded yet.
    * @param {object} track
-   * @returns {{label: string, track: string, time: string}|null}
+   * @returns {{label: string, time: string}|null}
    */
   #formatLastChange(track) {
     const change = track.lastChange;
-    if (!change?.track || !change.delta || !change.time) return null;
+    if (!change?.delta || !change.time) return null;
     return {
       label: change.delta > 0 ? `+${change.delta}` : String(change.delta),
-      track: game.i18n.localize(
-        change.track === "successes" ? "PVC.Successes" : "PVC.Failures"
-      ),
       time: new Date(change.time).toLocaleTimeString(game.i18n.lang, {
         hour: "2-digit",
         minute: "2-digit"
@@ -116,11 +142,12 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
     this.#applyPlacement(el);
     this.#applyStatusClasses(el, context);
     this.#bindDragHandle(el);
+    this.#bindResizeGrip(el);
     this.#bindSetInputs(el);
   }
 
   /**
-   * Position the HUD: a free-drag offset wins if the user has moved it,
+   * Position and size the HUD: a free-drag offset wins if the user has moved it,
    * otherwise the chosen screen anchor applies. Offsets are clamped into the
    * viewport so a stale value can never strand the HUD off screen.
    * @param {HTMLElement} el
@@ -128,6 +155,13 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
   #applyPlacement(el) {
     const scale = Number(game.settings.get(MODULE_ID, SETTINGS.OVERLAY_SCALE)) || 1;
     el.style.setProperty("--pvc-scale", String(Math.min(1.6, Math.max(0.6, scale))));
+
+    const width = clampInt(
+      game.settings.get(MODULE_ID, SETTINGS.OVERLAY_WIDTH),
+      LIMITS.MIN_OVERLAY_WIDTH,
+      LIMITS.MAX_OVERLAY_WIDTH
+    );
+    el.style.setProperty("--pvc-width", `${width}px`);
 
     for (const key of Object.keys(OVERLAY_POSITIONS)) el.classList.remove(`pvc-at-${key}`);
     el.classList.remove("pvc-free");
@@ -155,6 +189,7 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
   #applyStatusClasses(el, context) {
     el.classList.toggle("pvc-collapsed", context.collapsed);
     el.classList.toggle("pvc-gm", context.isGM);
+    el.classList.toggle("pvc-rings", context.rings);
   }
 
   /**
@@ -210,7 +245,67 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
   }
 
   /**
-   * Wire the GM "set" fields: type a number, press Enter, the count is set.
+   * Drag the bottom-right grip to widen or narrow the HUD, which is what makes
+   * the card grid reflow between one, two and three columns. The width is a
+   * per-user client setting; it never touches shared state.
+   *
+   * The grip is a sibling of the scrolling grid rather than a child, so it stays
+   * on screen with any number of tracks. Keyboard users get the same range from
+   * the "Counter Width" slider in the module settings.
+   *
+   * @param {HTMLElement} el
+   */
+  #bindResizeGrip(el) {
+    const grip = el.querySelector("[data-resize-grip]");
+    if (!grip) return;
+
+    const apply = (value) => {
+      const width = clampInt(value, LIMITS.MIN_OVERLAY_WIDTH, LIMITS.MAX_OVERLAY_WIDTH);
+      el.style.setProperty("--pvc-width", `${width}px`);
+      return width;
+    };
+
+    grip.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+
+      const surface = el.querySelector(".pvc-panel-surface");
+      const scale = Number(getComputedStyle(el).getPropertyValue("--pvc-scale")) || 1;
+      const startX = event.clientX;
+      const measured = surface ? surface.getBoundingClientRect().width / scale : NaN;
+      const startWidth = Number.isFinite(measured) ? measured : LIMITS.MIN_OVERLAY_WIDTH;
+      el.classList.add("pvc-resizing");
+
+      let width = startWidth;
+      const onMove = (moveEvent) => {
+        width = apply(startWidth + (moveEvent.clientX - startX) / scale);
+      };
+
+      const onUp = async () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
+        el.classList.remove("pvc-resizing");
+        await game.settings.set(MODULE_ID, SETTINGS.OVERLAY_WIDTH, width);
+        log("Overlay resized", { width });
+      };
+
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
+
+    // Double-clicking the grip returns the HUD to the default width.
+    grip.addEventListener("dblclick", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const width = apply(320);
+      await game.settings.set(MODULE_ID, SETTINGS.OVERLAY_WIDTH, width);
+    });
+  }
+
+  /**
+   * Wire the GM "set" fields: type a number, press Enter, progress is set.
    * @param {HTMLElement} el
    */
   #bindSetInputs(el) {
@@ -231,12 +326,7 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
           return;
         }
 
-        const id = input.dataset.id;
-        const track = getVisibleTracks().find((t) => t.id === id);
-        if (!track) return;
-        const key = input.dataset.setTrack;
-        if (key === "failures") await setTrackCounts(id, track.successes, value);
-        else await setTrackCounts(id, value, track.failures);
+        await setTrackCurrent(input.dataset.id, value);
       });
     }
   }
@@ -283,7 +373,7 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
     if (!game.user.isGM) return;
     const delta = Number(target.dataset.delta);
     if (!Number.isFinite(delta)) return;
-    await adjustTrack(target.dataset.id, target.dataset.track, delta);
+    await adjustTrack(target.dataset.id, delta);
   }
 
   /**

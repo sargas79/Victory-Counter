@@ -1,0 +1,29 @@
+{{!--
+  Circular progress ring, shared by the HUD and the control panel.
+
+  Expects a track-shaped context: `current`, `target`, `percent`, `ringOffset`,
+  `negative`, `complete`, `progressLabel`, plus the module-level `ring` geometry
+  passed down as `ring`.
+
+  Pure SVG + CSS: two concentric strokes, the second revealed by dash offset.
+  The offset is precomputed in JS (`ringDashOffset`) so the template stays free
+  of arithmetic and the ring updates the instant the counter re-renders.
+
+  The numeric value sits in the centre as `current / target`. The ring itself is
+  aria-hidden; the wrapper carries the full label, so a screen reader announces
+  "Raise the Alarm, negative track, 2 of 5" rather than reading loose digits.
+--}}
+<div class="pvc-ring{{#if negative}} pvc-ring-negative{{/if}}{{#if complete}} pvc-ring-complete{{/if}}"
+     role="img" aria-label="{{progressLabel}}" data-percent="{{percent}}">
+  <svg class="pvc-ring-svg" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+    <circle class="pvc-ring-groove" cx="50" cy="50" r="{{ring.RADIUS}}"/>
+    <circle class="pvc-ring-value" cx="50" cy="50" r="{{ring.RADIUS}}"
+            stroke-dasharray="{{ring.CIRCUMFERENCE}}"
+            stroke-dashoffset="{{ringOffset}}"/>
+  </svg>
+  <div class="pvc-ring-readout" aria-hidden="true">
+    <span class="pvc-ring-current">{{current}}</span>
+    <span class="pvc-ring-divider">/</span>
+    <span class="pvc-ring-target">{{target}}</span>
+  </div>
+</div>

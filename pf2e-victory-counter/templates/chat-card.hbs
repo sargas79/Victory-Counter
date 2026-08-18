@@ -1,29 +1,22 @@
 {{!-- Chat summary posted when a track's state changes. --}}
-<div class="pvc-chat-card pvc-{{track.status}}">
+<div class="pvc-chat-card pvc-{{track.status}}{{#if (eq track.type "negative")}} pvc-negative{{/if}}">
   <header class="pvc-chat-header">
     <i class="fa-solid fa-trophy" aria-hidden="true"></i>
     <span>{{#if track.title}}{{track.title}}{{else}}{{localize "PVC.DefaultTitle"}}{{/if}}</span>
+    <span class="pvc-chat-type">
+      <i class="fa-solid {{#if (eq track.type "negative")}}fa-arrow-down{{else}}fa-arrow-up{{/if}}" aria-hidden="true"></i>
+      {{typeLabel}}
+    </span>
   </header>
 
   {{#if reason}}<p class="pvc-chat-reason">{{reason}}</p>{{/if}}
 
-  <ul class="pvc-chat-counts">
-    <li>
-      <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
-      {{localize "PVC.Successes"}}: <strong>{{track.successes}} / {{track.requiredSuccesses}}</strong>
-      {{#if successDelta}}<span class="pvc-chat-delta">({{numberFormat successDelta sign=true}})</span>{{/if}}
-    </li>
-    {{#if track.trackFailures}}
-    <li>
-      <i class="fa-solid fa-circle-xmark" aria-hidden="true"></i>
-      {{localize "PVC.Failures"}}: <strong>{{track.failures}} / {{track.requiredFailures}}</strong>
-      {{#if failureDelta}}<span class="pvc-chat-delta">({{numberFormat failureDelta sign=true}})</span>{{/if}}
-    </li>
-    {{/if}}
-  </ul>
+  <p class="pvc-chat-progress">
+    <strong>{{track.current}} / {{track.target}}</strong>
+    {{#if delta}}<span class="pvc-chat-delta">({{numberFormat delta sign=true}})</span>{{/if}}
+  </p>
 
-  {{#unless (eq track.status "running")}}
+  {{#if (eq track.status "complete")}}
   <div class="pvc-chat-result">{{statusLabel}}</div>
-  {{/unless}}
+  {{/if}}
 </div>
-

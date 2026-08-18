@@ -1,7 +1,14 @@
 {{!--
-  Victory Points HUD — a stacked list of track cards, one per active track
-  the current user may see. Collapsed state shows a compact chip per track.
+  Progress HUD — a reflowing grid of track cards, one per active track the
+  current user may see. Collapsed state shows a compact chip per track.
   Icons are Phosphor, inline on currentColor.
+
+  Layout: `.pvc-track-grid` is a CSS Grid with `auto-fill` + `minmax`, so the
+  number of columns follows the HUD's own width. The resize grip in the footer
+  strip sits outside the scrolling grid and is therefore always reachable.
+
+  Polarity is never signalled by colour alone: every card and chip carries an
+  arrow icon plus a written "Positive"/"Negative" label.
 
   GM-only affordances are marked with the accent; everything a player sees is
   plain. Rendered frameless; placement is CSS + the drag handler in overlay.js.
@@ -20,26 +27,28 @@
     </button>
   </div>
   {{#each tracks}}
-  <div class="pvc-compact pvc-{{status}}">
-    <span class="pvc-compact-title" title="{{displayTitle}}">{{displayTitle}}</span>
-    <span class="pvc-compact-value">{{successes}}</span>
-    <span class="pvc-compact-target">/ {{requiredSuccesses}}</span>
-    <div class="pvc-compact-track">
-      <div class="pvc-compact-fill" style="width: {{successPercent}}%"></div>
-    </div>
-    {{#if trackFailures}}
-    <span class="pvc-compact-divider"></span>
-    <span class="pvc-compact-failures" data-tooltip="{{localize 'PVC.Failures'}}">
-      {{failures}}/{{requiredFailures}}
+  <div class="pvc-compact pvc-{{status}}{{#if negative}} pvc-negative{{/if}}"
+       aria-label="{{progressLabel}}">
+    <span class="pvc-type-mark" data-tooltip="{{typeTooltip}}" aria-hidden="true">
+      {{#if negative}}
+      <svg viewBox="0 0 256 256" fill="currentColor"><path d="M205.66,149.66l-72,72a8,8,0,0,1-11.32,0l-72-72a8,8,0,0,1,11.32-11.32L120,196.69V40a8,8,0,0,1,16,0V196.69l58.34-58.35a8,8,0,0,1,11.32,11.32Z"/></svg>
+      {{else}}
+      <svg viewBox="0 0 256 256" fill="currentColor"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z"/></svg>
+      {{/if}}
     </span>
-    {{/if}}
+    <span class="pvc-compact-title" title="{{displayTitle}}">{{displayTitle}}</span>
+    <span class="pvc-compact-value">{{current}}</span>
+    <span class="pvc-compact-target">/ {{target}}</span>
+    <div class="pvc-track">
+      <div class="pvc-track-fill" style="width: {{percent}}%"></div>
+    </div>
   </div>
   {{/each}}
 </div>
 
 {{else}}
 
-{{!-- ---------- Expanded: track card stack ---------- --}}
+{{!-- ---------- Expanded: reflowing card grid ---------- --}}
 <div class="pvc-panel-surface">
 
   <div class="pvc-chrome" data-drag-handle>
@@ -77,12 +86,12 @@
     </button>
   </div>
 
-  <div class="pvc-track-stack">
+  <div class="pvc-track-grid">
   {{#each tracks}}
-  <div class="pvc-body pvc-{{status}}{{#unless (eq status "running")}} pvc-resolved{{/unless}}">
+  <article class="pvc-card pvc-{{status}}{{#if negative}} pvc-negative{{/if}}{{#if complete}} pvc-resolved{{/if}}">
 
-    <div class="pvc-track-header">
-      <span class="pvc-track-title">{{displayTitle}}</span>
+    <div class="pvc-card-header">
+      <span class="pvc-card-title" title="{{displayTitle}}">{{displayTitle}}</span>
       {{#if ../isGM}}
       <button type="button"
               class="pvc-chrome-btn pvc-accent{{#unless visibleToPlayers}} pvc-off{{/unless}}"
@@ -92,95 +101,86 @@
         <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M247.31,124.76c-.35-.79-8.82-19.58-27.65-38.41C194.57,61.26,162.88,48,128,48S61.43,61.26,36.34,86.35C17.51,105.18,9,124,8.69,124.76a8,8,0,0,0,0,6.5c.35.79,8.82,19.57,27.65,38.4C61.43,194.74,93.12,208,128,208s66.57-13.26,91.66-38.34c18.83-18.83,27.3-37.61,27.65-38.4A8,8,0,0,0,247.31,124.76ZM128,192c-30.78,0-57.67-11.19-79.93-33.25A133.47,133.47,0,0,1,25,128,133.33,133.33,0,0,1,48.07,97.25C70.33,75.19,97.22,64,128,64s57.67,11.19,79.93,33.25A133.46,133.46,0,0,1,231.05,128C223.84,141.46,192.43,192,128,192Zm0-112a48,48,0,1,0,48,48A48.05,48.05,0,0,0,128,80Zm0,80a32,32,0,1,1,32-32A32,32,0,0,1,128,160Z"/></svg>
       </button>
       {{/if}}
+    </div>
+
+    {{!-- Polarity badge: icon + written label, never colour alone. --}}
+    <div class="pvc-meta">
+      <span class="pvc-type-badge" data-tooltip="{{typeTooltip}}">
+        <span class="pvc-type-mark" aria-hidden="true">
+          {{#if negative}}
+          <svg viewBox="0 0 256 256" fill="currentColor"><path d="M205.66,149.66l-72,72a8,8,0,0,1-11.32,0l-72-72a8,8,0,0,1,11.32-11.32L120,196.69V40a8,8,0,0,1,16,0V196.69l58.34-58.35a8,8,0,0,1,11.32,11.32Z"/></svg>
+          {{else}}
+          <svg viewBox="0 0 256 256" fill="currentColor"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z"/></svg>
+          {{/if}}
+        </span>
+        {{typeLabel}}
+      </span>
       <span class="pvc-status pvc-status-{{status}}">{{statusLabel}}</span>
     </div>
 
-    {{!-- ===== Successes ===== --}}
-    <div class="pvc-counter pvc-counter-success">
-      <div class="pvc-readout">
-        <div class="pvc-figure">
-          <span class="pvc-figure-value">{{successes}}</span>
-          <span class="pvc-figure-target">/ {{requiredSuccesses}}</span>
-        </div>
-        <span class="pvc-kicker">{{localize "PVC.Successes"}}</span>
+    {{#if ../rings}}
+    {{!-- ===== Ring readout ===== --}}
+    <div class="pvc-ring-wrap">
+      {{> "modules/pf2e-victory-counter/templates/progress-ring.hbs" ring=../ring}}
+    </div>
+    {{else}}
+    {{!-- ===== Linear readout ===== --}}
+    <div class="pvc-readout" aria-label="{{progressLabel}}">
+      <div class="pvc-figure">
+        <span class="pvc-figure-value">{{current}}</span>
+        <span class="pvc-figure-target">/ {{target}}</span>
       </div>
-
-      <div class="pvc-track">
-        <div class="pvc-track-fill" style="width: {{successPercent}}%"></div>
-      </div>
-
-      {{#if ../isGM}}
-      <div class="pvc-controls">
-        <button type="button" class="pvc-step pvc-accent" data-action="adjustTrack"
-                data-id="{{id}}" data-track="successes" data-delta="-1"
-                data-tooltip="{{localize 'PVC.Panel.RemoveSuccess'}}"
-                aria-label="{{localize 'PVC.Panel.RemoveSuccess'}}">
-          <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128Z"/></svg>
-        </button>
-        <button type="button" class="pvc-step pvc-accent" data-action="adjustTrack"
-                data-id="{{id}}" data-track="successes" data-delta="1"
-                data-tooltip="{{localize 'PVC.Panel.AddSuccess'}}"
-                aria-label="{{localize 'PVC.Panel.AddSuccess'}}">
-          <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"/></svg>
-        </button>
-        <input type="text" class="pvc-set" data-id="{{id}}" data-set-track="successes" inputmode="numeric"
-               placeholder="{{localize 'PVC.Overlay.SetPlaceholder'}}"
-               data-tooltip="{{localize 'PVC.Overlay.SetHint'}}"
-               aria-label="{{localize 'PVC.Overlay.SetHint'}}">
-      </div>
-      {{/if}}
+      <span class="pvc-kicker">{{percent}}%</span>
     </div>
 
-    {{!-- ===== Failures ===== --}}
-    {{#if trackFailures}}
-    <div class="pvc-counter pvc-counter-failure">
-      <div class="pvc-readout">
-        <div class="pvc-figure">
-          <span class="pvc-figure-value">{{failures}}</span>
-          <span class="pvc-figure-target">/ {{requiredFailures}}</span>
-        </div>
-        <span class="pvc-kicker">{{localize "PVC.Failures"}}</span>
-      </div>
+    <div class="pvc-track">
+      <div class="pvc-track-fill" style="width: {{percent}}%"></div>
+    </div>
+    {{/if}}
 
-      <div class="pvc-track">
-        <div class="pvc-track-fill" style="width: {{failurePercent}}%"></div>
-      </div>
-
-      {{#if ../isGM}}
-      <div class="pvc-controls">
-        <button type="button" class="pvc-step pvc-accent" data-action="adjustTrack"
-                data-id="{{id}}" data-track="failures" data-delta="-1"
-                data-tooltip="{{localize 'PVC.Panel.RemoveFailure'}}"
-                aria-label="{{localize 'PVC.Panel.RemoveFailure'}}">
-          <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128Z"/></svg>
-        </button>
-        <button type="button" class="pvc-step pvc-accent" data-action="adjustTrack"
-                data-id="{{id}}" data-track="failures" data-delta="1"
-                data-tooltip="{{localize 'PVC.Panel.AddFailure'}}"
-                aria-label="{{localize 'PVC.Panel.AddFailure'}}">
-          <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"/></svg>
-        </button>
-        <input type="text" class="pvc-set" data-id="{{id}}" data-set-track="failures" inputmode="numeric"
-               placeholder="{{localize 'PVC.Overlay.SetPlaceholder'}}"
-               data-tooltip="{{localize 'PVC.Overlay.SetHint'}}"
-               aria-label="{{localize 'PVC.Overlay.SetHint'}}">
-      </div>
-      {{/if}}
+    {{#if ../isGM}}
+    <div class="pvc-controls">
+      <button type="button" class="pvc-step pvc-accent" data-action="adjustTrack"
+              data-id="{{id}}" data-delta="-1"
+              data-tooltip="{{localize 'PVC.Action.DecreaseHint'}}"
+              aria-label="{{localize 'PVC.Action.DecreaseHint'}}">
+        <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M224,128a8,8,0,0,1-8,8H40a8,8,0,0,1,0-16H216A8,8,0,0,1,224,128Z"/></svg>
+      </button>
+      <button type="button" class="pvc-step pvc-accent" data-action="adjustTrack"
+              data-id="{{id}}" data-delta="1"
+              data-tooltip="{{localize 'PVC.Action.IncreaseHint'}}"
+              aria-label="{{localize 'PVC.Action.IncreaseHint'}}">
+        <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M224,128a8,8,0,0,1-8,8H136v80a8,8,0,0,1-16,0V136H40a8,8,0,0,1,0-16h80V40a8,8,0,0,1,16,0v80h80A8,8,0,0,1,224,128Z"/></svg>
+      </button>
+      <input type="text" class="pvc-set" data-id="{{id}}" inputmode="numeric"
+             placeholder="{{localize 'PVC.Overlay.SetPlaceholder'}}"
+             data-tooltip="{{localize 'PVC.Overlay.SetHint'}}"
+             aria-label="{{localize 'PVC.Overlay.SetHint'}}">
     </div>
     {{/if}}
 
     {{#if lastChange}}
     <div class="pvc-footer">
       <span class="pvc-log-delta">{{lastChange.label}}</span>
-      <span class="pvc-log-text">{{lastChange.track}}</span>
+      <span class="pvc-log-text">{{localize "PVC.Progress"}}</span>
       <span class="pvc-log-time">{{lastChange.time}}</span>
     </div>
     {{/if}}
 
-  </div>
+  </article>
   {{/each}}
+  </div>
+
+  {{!-- Footer strip: sibling of the scrolling grid, so the grip never scrolls
+        out of reach no matter how many tracks are open. --}}
+  <div class="pvc-resize-strip">
+    <span class="pvc-strip-count">{{tracks.length}}</span>
+    <button type="button" class="pvc-resize-grip" data-resize-grip
+            data-tooltip="{{localize 'PVC.Overlay.ResizeHint'}}"
+            aria-label="{{localize 'PVC.Overlay.ResizeHint'}}">
+      <svg viewBox="0 0 256 256" fill="currentColor" aria-hidden="true"><path d="M212,60V212a8,8,0,0,1-8,8H52a8,8,0,0,1,0-16H196V60a8,8,0,0,1,16,0Zm-52,92a8,8,0,0,0,8-8V116a8,8,0,0,0-16,0v28A8,8,0,0,0,160,152Zm-48,16a8,8,0,0,0,0,16h32a8,8,0,0,0,0-16Z"/></svg>
+    </button>
   </div>
 </div>
 
 {{/if}}
-
