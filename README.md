@@ -161,10 +161,10 @@ One world setting (`tracks`) holds an array of:
 ```
 
 `status` is derived, never authored: `complete` when `current >= target`,
-otherwise `running`. `legacy` holds the pre-3.0 failure fields of a migrated
+otherwise `running`. `legacy` holds the pre-schema-3 failure fields of a migrated
 track, and is never read at runtime.
 
-Upgrading from 2.x migrates `successes → current` and
+Upgrading from schema 2 migrates `successes → current` and
 `requiredSuccesses → target`, defaults every track to `type: "positive"`, and
 preserves the failure fields under `legacy`. The migration is versioned and
 idempotent, writes a one-time verbatim backup to a hidden `legacyBackup`
@@ -178,19 +178,20 @@ checks can be done in a single GM session.
 
 **Upgrading from the PF2e-only build**
 
-1. In a world that ran 3.x as `pf2e-victory-counter`, disable that module,
-   install this one and reload as GM. The existing tracks appear, a notification
-   reports how many were imported, and the old module's settings are still
-   present in the world database untouched.
+1. In a world that ran the PF2e build as `pf2e-victory-counter`, disable that
+   module, install this one and reload as GM. The existing tracks appear, a
+   notification reports how many were imported, and the old module's settings
+   are still present in the world database untouched.
 2. Reload again. No second import notification, and the tracks are unchanged.
 3. In a world that has never had the old module, confirm the import is silent
    and the world starts with no tracks.
 
 **Migration**
 
-4. With 2.x data present, load the world as GM. The tracks appear with their old
-   success totals as the current value and their old required-successes as the
-   target, all marked *Positive*, with no console errors.
+4. With schema 2 data present, load the world as GM. The tracks appear with
+   their old success totals as the current value and their old
+   required-successes as the target, all marked *Positive*, with no console
+   errors.
 5. Enable **Debug Logging** and reload. The console prints one migration summary
    line; a second reload prints "already at schema 3 — nothing to do."
 6. Hand-edit a track's stored data to remove `target`, or set it to `null`. It
@@ -258,14 +259,14 @@ Console must stay clean throughout.
 ## Data safety
 
 The module writes **only** world-scoped settings for track data, the undo
-snapshot, the schema version and the pre-3.0 backup, plus per-user display
+snapshot, the schema version and the pre-schema-3 backup, plus per-user display
 preferences. It never creates, updates or deletes Actors, Items, Scenes,
 Journals, Effects or any other world document, and it never touches any game
 system's data. Disabling or uninstalling the module leaves your world unchanged.
 
-Upgrading from the PF2e-only 3.x build reads the old `pf2e-victory-counter`
+Upgrading from the PF2e-only build reads the old `pf2e-victory-counter`
 settings once and copies the tracks across. It never writes to or deletes the
-old namespace, so reinstalling 3.x recovers the original world exactly as it
+old namespace, so reinstalling that build recovers the original world as it
 was. Per-user display preferences (anchor, width, scale, collapsed state) are
 not carried over and are simply set again on first use.
 
