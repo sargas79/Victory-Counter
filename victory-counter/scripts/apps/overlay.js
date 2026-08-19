@@ -144,6 +144,7 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
     this.#bindDragHandle(el);
     this.#bindResizeGrip(el);
     this.#bindSetInputs(el);
+    this.#bindCompactAdjust(el);
   }
 
   /**
@@ -306,6 +307,29 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
       const width = apply(320);
       await game.settings.set(MODULE_ID, SETTINGS.OVERLAY_WIDTH, width);
     });
+  }
+
+  /**
+   * Compact chips double as GM steppers: left-click adds 1, right-click removes
+   * 1. The chips carry no buttons of their own, so the whole chip is the target;
+   * the context menu is suppressed so the right-click never opens it.
+   * @param {HTMLElement} el
+   */
+  #bindCompactAdjust(el) {
+    if (!game.user.isGM) return;
+    for (const chip of el.querySelectorAll("[data-compact-adjust]")) {
+      chip.addEventListener("click", async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        await adjustTrack(chip.dataset.id, 1);
+      });
+
+      chip.addEventListener("contextmenu", async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        await adjustTrack(chip.dataset.id, -1);
+      });
+    }
   }
 
   /**

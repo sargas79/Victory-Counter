@@ -28,6 +28,7 @@
   "PVC.Overlay.VisibleToPlayers": "Visible to players — click to hide",
   "PVC.Overlay.SetPlaceholder": "set",
   "PVC.Overlay.SetHint": "Type a number and press Enter to set progress",
+  "PVC.Overlay.CompactAdjustHint": "Left-click to increase by 1, right-click to decrease by 1",
   "PVC.Overlay.ResizeHint": "Drag to resize the counter; double-click to reset the width",
 
   "PVC.Panel.Title": "Victory Counter Controls",

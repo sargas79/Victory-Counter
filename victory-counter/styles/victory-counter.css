@@ -670,6 +670,21 @@
   box-shadow: var(--pvc-shadow);
 }
 
+/* GM chips are steppers: left-click +1, right-click -1. Players get the same
+   chip without the pointer affordance, since the handlers are GM-only. */
+#pvc-overlay .pvc-compact-adjust {
+  cursor: pointer;
+  transition: background 120ms ease, box-shadow 120ms ease;
+}
+
+#pvc-overlay .pvc-compact-adjust:hover {
+  background: rgba(48, 51, 68, 0.96);
+}
+
+#pvc-overlay .pvc-compact-adjust:active {
+  background: rgba(58, 61, 80, 0.96);
+}
+
 #pvc-overlay .pvc-compact-title {
   font: 500 10px/1 var(--pvc-font);
   color: var(--pvc-neutral-400);
