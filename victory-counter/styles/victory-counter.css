@@ -685,6 +685,11 @@
   background: rgba(58, 61, 80, 0.96);
 }
 
+#pvc-overlay .pvc-compact-adjust:focus-visible {
+  outline: 2px solid var(--pvc-accent-300);
+  outline-offset: 2px;
+}
+
 #pvc-overlay .pvc-compact-title {
   font: 500 10px/1 var(--pvc-font);
   color: var(--pvc-neutral-400);

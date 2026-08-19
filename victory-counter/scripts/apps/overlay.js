@@ -311,23 +311,48 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
 
   /**
    * Compact chips double as GM steppers: left-click adds 1, right-click removes
-   * 1. The chips carry no buttons of their own, so the whole chip is the target;
-   * the context menu is suppressed so the right-click never opens it.
+   * 1. The chips carry no buttons of their own, so the whole chip is the target.
+   *
+   * The decrement is bound to `mousedown` with an explicit secondary-button
+   * check rather than to `contextmenu`, because `contextmenu` also fires for the
+   * keyboard menu key and for a touch long-press — neither of which the GM means
+   * as "subtract one". `contextmenu` is kept purely to suppress the menu.
+   *
+   * The chip is exposed as a `role="button"` in the template, so it takes focus
+   * and needs the keyboard activation a real button would get for free: Enter,
+   * Space and Arrow Up add 1, Arrow Down and Minus remove 1.
    * @param {HTMLElement} el
    */
   #bindCompactAdjust(el) {
     if (!game.user.isGM) return;
+
+    const step = async (event, delta, chip) => {
+      event.preventDefault();
+      event.stopPropagation();
+      await adjustTrack(chip.dataset.id, delta);
+    };
+
     for (const chip of el.querySelectorAll("[data-compact-adjust]")) {
-      chip.addEventListener("click", async (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        await adjustTrack(chip.dataset.id, 1);
+      // Fires for the primary button only, and for a touch tap.
+      chip.addEventListener("click", (event) => step(event, 1, chip));
+
+      chip.addEventListener("mousedown", (event) => {
+        if (event.button !== 2) return;
+        return step(event, -1, chip);
       });
 
-      chip.addEventListener("contextmenu", async (event) => {
+      // Suppression only: the decrement lives on mousedown above.
+      chip.addEventListener("contextmenu", (event) => {
         event.preventDefault();
         event.stopPropagation();
-        await adjustTrack(chip.dataset.id, -1);
+      });
+
+      chip.addEventListener("keydown", (event) => {
+        if (event.altKey || event.ctrlKey || event.metaKey) return;
+        if (["Enter", " ", "Spacebar", "ArrowUp", "+"].includes(event.key)) {
+          return step(event, 1, chip);
+        }
+        if (["ArrowDown", "-"].includes(event.key)) return step(event, -1, chip);
       });
     }
   }
