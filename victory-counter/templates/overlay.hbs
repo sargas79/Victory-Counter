@@ -19,7 +19,11 @@
 {{!-- ---------- Collapsed: compact chip list ---------- --}}
 <div class="pvc-compact-stack">
   <div class="pvc-compact-bar" data-drag-handle>
-    <span class="pvc-compact-kicker">{{localize "PVC.Abbrev"}}</span>
+    <span class="pvc-grip" aria-hidden="true">
+      <span></span><span></span><span></span><span></span><span></span><span></span>
+    </span>
+    <span class="pvc-compact-heading">{{localize "PVC.Title"}}</span>
+    <span class="pvc-compact-count">{{tracks.length}}</span>
     <button type="button" class="pvc-ghost-btn" data-action="toggleCollapse"
             data-tooltip="{{localize 'PVC.Overlay.Expand'}}"
             aria-label="{{localize 'PVC.Overlay.Expand'}}">
