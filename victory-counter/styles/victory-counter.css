@@ -639,14 +639,19 @@
   max-width: calc(100vw - 24px);
 }
 
+/* The collapsed header is a real surface, not a bare strip: it matches the
+   chips below it so the stack reads as one HUD and stays legible over any
+   scene art. */
 #pvc-overlay .pvc-compact-bar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 6px;
-  height: 20px;
-  padding: 0 6px;
-  border-radius: var(--pvc-radius-sm);
+  height: 24px;
+  padding: 0 6px 0 4px;
+  border-radius: var(--pvc-radius-md);
+  background: linear-gradient(#2a2c3a, #1e2030);
+  box-shadow: var(--pvc-shadow);
+  backdrop-filter: blur(8px);
   cursor: grab;
 }
 
@@ -675,11 +680,23 @@
   flex: none;
 }
 
-#pvc-overlay .pvc-compact-kicker {
-  font: 400 9.5px/1 var(--pvc-font);
+#pvc-overlay .pvc-compact-heading {
+  flex: 1;
+  min-width: 0;
+  font: 500 10.5px/1 var(--pvc-font);
   letter-spacing: 0.11em;
   text-transform: uppercase;
-  color: var(--pvc-neutral-600);
+  color: var(--pvc-neutral-400);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#pvc-overlay .pvc-compact-count {
+  font: 400 9px/1 var(--pvc-mono);
+  letter-spacing: 0.1em;
+  color: var(--pvc-neutral-700);
+  font-variant-numeric: tabular-nums;
   flex: none;
 }
 
