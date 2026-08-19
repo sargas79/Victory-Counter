@@ -948,7 +948,12 @@
 /* Polarity: red progress numbers in the GM panel too. */
 .pvc-panel .pvc-negative .pvc-stepper-value { color: var(--pvc-negative); }
 
-.pvc-panel button {
+/* Scoped to the content area via :where() so the window-header controls
+   (minimise/close) keep Foundry's own styling and their Font Awesome glyph
+   font -- the `font` shorthand below would otherwise reset their font-family
+   and render them as empty boxes. :where() adds no specificity, so the more
+   specific button rules further down still win. */
+.pvc-panel :where(.window-content) button {
   font: 500 11.5px/1 var(--pvc-font);
   color: var(--pvc-neutral-400);
   background: transparent;
@@ -958,7 +963,7 @@
   transition: background-color 120ms ease;
 }
 
-.pvc-panel button:hover:not([disabled]) { background: rgba(233, 233, 237, 0.08); }
+.pvc-panel :where(.window-content) button:hover:not([disabled]) { background: rgba(233, 233, 237, 0.08); }
 
 .pvc-panel .pvc-stepper button {
   flex: 0 0 auto;
@@ -998,7 +1003,7 @@
 
 .pvc-panel .pvc-danger:hover { background: rgba(239, 127, 110, 0.12); }
 
-.pvc-panel button[disabled] { opacity: 0.4; cursor: default; }
+.pvc-panel :where(.window-content) button[disabled] { opacity: 0.4; cursor: default; }
 
 /* --------------------------------------------------------------------------
    Chat card — sits in Foundry's own chat log, so it stays light-touch
