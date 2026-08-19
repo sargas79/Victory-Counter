@@ -48,10 +48,10 @@ the Dark progress clocks, chase trackers, doom counters, faction heat.
 
 1. In Foundry, go to **Add-on Modules → Install Module**.
 2. Paste:
-   ...
-   https://github.com/sargas79/Victory-Counter/releases/latest/download/module.json
-   ...
-4. Click **Install**, then enable the module in your world.
+```
+https://github.com/sargas79/Victory-Counter/releases/latest/download/module.json
+```
+3. Click **Install**, then enable the module in your world.
 
 ### Local development
 
