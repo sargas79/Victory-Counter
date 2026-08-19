@@ -3,7 +3,39 @@
 All notable changes to Victory Counter are documented here.
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.0.6] - 2026-08-18
+## [2.0.0] - 2026-08-18
+
+### Added
+
+- **The collapsed HUD has a real header.** The compact stack used to lead with a
+  bare 20px strip carrying only the "VP" abbreviation and the expand chevron,
+  with no surface of its own; over busy scene art it read as floating controls
+  rather than the head of a panel, and nothing marked it as the drag handle it
+  already was. The bar now takes the same gradient, shadow and blur as the
+  expanded chrome and carries the localized module title, a track count and grip
+  dots. The abbreviation kicker is gone, redundant now that the full title shows.
+- **Progress steppers on the collapsed chips.** Nudging a track no longer means
+  expanding the HUD or opening the control panel mid-scene: on a GM's screen a
+  left-click on a chip adds 1 and a right-click removes 1. Chips are GM-gated,
+  so a player's chip is unchanged, and adjustments go through `adjustTrack`, so
+  clamping, the overshoot rule and chat announcements all apply as usual.
+  The chips are keyboard-reachable — `role="button"`, a tab stop, an accessible
+  name stating what activation does, and a focus-visible outline; Enter, Space
+  and Arrow Up add 1, Arrow Down and Minus remove 1.
+- **Per-track "Announce in Chat" option.** Each track now carries its own
+  `postToChat` flag, editable in the GM control panel when adding a track and on
+  every existing track card. When it is off, progress changes to that track post
+  no chat card while other tracks keep announcing. The world setting "Post
+  Progress to Chat" still acts as the master switch. Tracks stored before this
+  option existed default to on, so behaviour is unchanged until a GM opts out.
+
+### Notes
+
+- 2.0.0 is the first release after the rename in 1.0.5, and the major bump
+  records that break: the module id changed, so Foundry treats it as a different
+  module and an existing install must be re-pointed at `victory-counter/`.
+
+## [1.0.5] - 2026-08-18
 
 The module is no longer tied to Pathfinder 2e. Nothing about how it works has
 changed — the counter never read system data in the first place — but it was
@@ -40,29 +72,21 @@ packaged, named and gated as a PF2e module, and it is now none of those things.
     nothing is found, so no world pays for the lookup twice.
   - It never overwrites. A world that already has tracks under the new id keeps
     them and the import is skipped.
-  - It never writes to or deletes the old namespace. The 3.x settings stay in
-    the world database exactly as they were, so reinstalling 3.x recovers the
-    original world unchanged.
+  - It never writes to or deletes the old namespace. The `pf2e-victory-counter`
+    settings stay in the world database exactly as they were, so reinstalling
+    that module recovers the original world unchanged.
   - The imported array is backed up verbatim before it is reshaped, alongside
-    the existing pre-3.0 backup.
+    the existing pre-schema-3 backup.
 
   Per-user display preferences (anchor, width, scale, collapsed state) are not
   imported. They are cosmetic, per-client, and set again on first use.
 
-- **Per-track "Announce in Chat" option.** Each track now carries its own
-  `postToChat` flag, editable in the GM control panel when adding a track and on
-  every existing track card. When it is off, progress changes to that track post
-  no chat card while other tracks keep announcing. The world setting "Post
-  Progress to Chat" still acts as the master switch. Tracks stored before this
-  option existed default to on, so behaviour is unchanged until a GM opts out.
-
-
-## [3.0.1] - 2026-08-17
+## [1.0.4] - 2026-08-17
 
 ### Fixed
 
 - **The module did not load at all.** A code-scanning autofix merged into `main`
-  as part of 3.0.0 added `pointercancel` handling to the HUD resize grip but
+  as part of 1.0.3 added `pointercancel` handling to the HUD resize grip but
   deleted the `});` that closed the `pointerdown` callback. The resulting brace
   imbalance moved `#bindResizeGrip` and `#bindSetInputs` outside the class body,
   making `this.#bindResizeGrip(el)` a reference to an undeclared private name —
@@ -103,7 +127,7 @@ new self-test asserts that every private method is declared inside the class
 body and that `#bindResizeGrip`'s braces balance, so this specific breakage
 cannot merge silently a second time.
 
-## [3.0.0] - 2026-08-17
+## [1.0.3] - 2026-08-17
 
 ### Changed
 
@@ -149,7 +173,7 @@ cannot merge silently a second time.
 - **Counter Width** client setting plus a drag grip in the HUD's bottom-right
   corner, so each user sizes the HUD to their own screen.
 - Versioned, idempotent data migration with a one-time verbatim backup of the
-  pre-3.0 track array, and a migration summary logged in debug mode only.
+  pre-schema-3 track array, and a migration summary logged in debug mode only.
 
 ### Fixed
 
@@ -172,7 +196,7 @@ cannot merge silently a second time.
 
 ### Migration
 
-Running 3.0 for the first time migrates the world's saved tracks:
+Running 1.0.3 for the first time migrates the world's saved tracks:
 
 | Before (schema 2) | After (schema 3) |
 |---|---|
@@ -190,7 +214,7 @@ Running 3.0 for the first time migrates the world's saved tracks:
   the data but no longer displayed; recreate it as a Negative track if you were
   using it during an ongoing challenge.
 
-## [2.0.0] - 2026-08-17
+## [1.0.2] - 2026-08-17
 
 ### Changed
 

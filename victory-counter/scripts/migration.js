@@ -13,7 +13,7 @@
  *    idempotent: re-running it against already-migrated data is a no-op.
  *
  * A third pass, {@link importLegacyModuleData}, runs before both of the above.
- * It carries a world's tracks over from the pre-4.0 `pf2e-victory-counter`
+ * It carries a world's tracks over from the pre-1.0.5 `pf2e-victory-counter`
  * module id, which Foundry treats as a completely separate settings namespace.
  *
  * Nothing here deletes a world flag, a setting, or a track record.
@@ -70,7 +70,7 @@ function firstNumber(...values) {
 }
 
 /* -------------------------------------------- */
-/*  Import from the pre-4.0 module id           */
+/*  Import from the pre-1.0.5 module id           */
 /* -------------------------------------------- */
 
 /**
@@ -110,7 +110,7 @@ function readLegacyWorldSetting(key) {
 }
 
 /**
- * Copy track data over from the pre-4.0 `pf2e-victory-counter` module id, once
+ * Copy track data over from the pre-1.0.5 `pf2e-victory-counter` module id, once
  * per world.
  *
  * Foundry namespaces settings by module id, so renaming the module to drop its

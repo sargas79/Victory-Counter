@@ -61,7 +61,7 @@ async function loadApp(which) {
 function deprecate(oldName, newName) {
   if (warned.has(oldName)) return;
   warned.add(oldName);
-  warn(`api.${oldName}() is deprecated and will be removed in 4.0. Use api.${newName}() instead.`);
+  warn(`api.${oldName}() is deprecated and will be removed in 3.0. Use api.${newName}() instead.`);
 }
 
 /**
@@ -177,7 +177,7 @@ export const api = {
   },
 
   /**
-   * @deprecated Failure tracking was removed in 3.0. Model a "bad" track as a
+   * @deprecated Failure tracking was removed in 1.0.3. Model a "bad" track as a
    * separate negative-polarity track instead. Returns null without writing.
    */
   addFailure: () => {
