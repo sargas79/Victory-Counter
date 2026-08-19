@@ -11,10 +11,6 @@ It suits any subsystem built on "fill a bar before the other bar fills": PF2e
 infiltration and research points, D&D 5e skill challenges and clocks, Blades in
 the Dark progress clocks, chase trackers, doom counters, faction heat.
 
-> The module folder is [`victory-counter/`](victory-counter) — that name must
-> match `module.json.id`, which is why it is a subfolder of this repo rather
-> than the repo root.
-
 ## Features
 
 - **Shared state.** Up to 10 concurrent tracks, stored in a world setting and
@@ -57,20 +53,21 @@ the Dark progress clocks, chase trackers, doom counters, faction heat.
 
 ### Local development
 
-Copy or symlink the `victory-counter/` folder into your Foundry user data
-directory so the path is:
+Clone or symlink this repository into your Foundry user data directory under a
+folder named exactly `victory-counter` (the name must match `module.json.id`),
+so the path is:
 
 ```
 <FoundryUserData>/Data/modules/victory-counter/
 ```
 
-The folder name must be exactly `victory-counter`. Restart Foundry, then enable
-**Victory Counter** in **Game Settings → Manage Modules**.
+Restart Foundry, then enable **Victory Counter** in
+**Game Settings → Manage Modules**.
 
 On Windows, a symlink from an admin PowerShell prompt:
 
 ```powershell
-New-Item -ItemType SymbolicLink -Path "$env:LOCALAPPDATA\FoundryVTT\Data\modules\victory-counter" -Target "C:\path\to\Victory-Counter\victory-counter"
+New-Item -ItemType SymbolicLink -Path "$env:LOCALAPPDATA\FoundryVTT\Data\modules\victory-counter" -Target "C:\path\to\Victory-Counter"
 ```
 
 ## Usage
@@ -169,7 +166,7 @@ Upgrading from schema 2 migrates `successes → current` and
 preserves the failure fields under `legacy`. The migration is versioned and
 idempotent, writes a one-time verbatim backup to a hidden `legacyBackup`
 setting, and deletes nothing. See the
-[changelog](victory-counter/CHANGELOG.md) for the full table.
+[changelog](CHANGELOG.md) for the full table.
 
 ## Manual test plan
 
