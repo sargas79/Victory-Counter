@@ -58,6 +58,14 @@
     <p class="hint">{{localize "PVC.Panel.VisibleToPlayersHint"}}</p>
   </div>
 
+  <div class="form-group">
+    <label for="pvc-new-post-chat">{{localize "PVC.Panel.PostToChat"}}</label>
+    <div class="form-fields">
+      <input type="checkbox" id="pvc-new-post-chat" name="new-postToChat" checked>
+    </div>
+    <p class="hint">{{localize "PVC.Panel.PostToChatHint"}}</p>
+  </div>
+
   <footer class="pvc-panel-actions">
     <button type="button" class="pvc-primary" data-action="addTrack">
       <i class="fa-solid fa-flag-checkered" aria-hidden="true"></i>
@@ -146,6 +154,15 @@
       <div class="form-fields">
         <input type="checkbox" id="pvc-visible-{{id}}" name="visibleToPlayers-{{id}}"
                {{checked visibleToPlayers}}>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="pvc-post-chat-{{id}}">{{localize "PVC.Panel.PostToChat"}}</label>
+      <div class="form-fields">
+        <input type="checkbox" id="pvc-post-chat-{{id}}" name="postToChat-{{id}}"
+               {{checked postToChat}}
+               data-tooltip="{{localize 'PVC.Panel.PostToChatHint'}}">
       </div>
     </div>
 

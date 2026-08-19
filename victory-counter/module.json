@@ -2,7 +2,7 @@
   "id": "victory-counter",
   "title": "Victory Counter",
   "description": "Shared, always-visible progress tracks for any game system. The GM creates any number of named tracks (e.g. Infiltration Points, Guard Awareness, Doomsday Device Activation), each with its own target, positive/negative polarity, optional progress ring, and player visibility. Every player sees the same live state on screen. System-agnostic: the module stores its entire state in its own settings and never reads or writes any world document.",
-  "version": "4.0.0",
+  "version": "1.0.6",
   "authors": [
     {
       "name": "Diego Vescovini",

@@ -28,6 +28,8 @@
   "PVC.Overlay.VisibleToPlayers": "Visible to players — click to hide",
   "PVC.Overlay.SetPlaceholder": "set",
   "PVC.Overlay.SetHint": "Type a number and press Enter to set progress",
+  "PVC.Overlay.CompactAdjustHint": "Left-click or Enter to increase by 1; right-click or Arrow Down to decrease by 1",
+  "PVC.Overlay.CompactAdjustLabel": "{progress}. Adjust progress: Enter or Arrow Up increases by 1, Arrow Down decreases by 1",
   "PVC.Overlay.ResizeHint": "Drag to resize the counter; double-click to reset the width",
 
   "PVC.Panel.Title": "Victory Counter Controls",
@@ -43,6 +45,8 @@
   "PVC.Panel.TypeHint": "Positive tracks read as party progress. Negative tracks read as pressure and show their numbers in red.",
   "PVC.Panel.VisibleToPlayers": "Visible to Players",
   "PVC.Panel.VisibleToPlayersHint": "When off, only GMs see this track and its progress chat cards are whispered.",
+  "PVC.Panel.PostToChat": "Announce in Chat",
+  "PVC.Panel.PostToChatHint": "When off, progress changes to this track post no chat card. The world setting \"Post Progress to Chat\" must also be on for any card to appear.",
   "PVC.Panel.AddTrack": "Add Track",
   "PVC.Panel.Apply": "Apply Changes",
   "PVC.Panel.ToggleVisibility": "Toggle Player Visibility",
@@ -116,7 +120,7 @@
   "PVC.Settings.AllowOvershoot.Name": "Allow Progress Beyond Target",
   "PVC.Settings.AllowOvershoot.Hint": "When off (the default), a track that has reached its target refuses further increases and says so. When on, progress may exceed the target; the ring still shows at most 100%.",
   "PVC.Settings.PostChat.Name": "Post Progress to Chat",
-  "PVC.Settings.PostChat.Hint": "Post a chat card whenever a track changes. Cards are whispered to GMs while that track is hidden from players.",
+  "PVC.Settings.PostChat.Hint": "Post a chat card whenever a track changes. Acts as a master switch: individual tracks can still opt out. Cards are whispered to GMs while that track is hidden from players.",
   "PVC.Settings.Debug.Name": "Debug Logging",
   "PVC.Settings.Debug.Hint": "Write verbose diagnostics to the browser console, prefixed with [victory-counter]. Also prints the data migration summary."
 }

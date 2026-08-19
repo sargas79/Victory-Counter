@@ -126,7 +126,7 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
 
   /**
    * Read the "add track" configuration fields.
-   * @returns {{title: string, target: number, type: string, visibleToPlayers: boolean}}
+   * @returns {{title: string, target: number, type: string, visibleToPlayers: boolean, postToChat: boolean}}
    */
   readNewTrackForm() {
     const root = this.element;
@@ -136,14 +136,15 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
       title: String(field("new-title")?.value ?? "").trim().slice(0, LIMITS.MAX_TITLE_LENGTH),
       target: clampInt(field("new-target")?.value, LIMITS.MIN_TARGET, LIMITS.MAX_TARGET),
       type: Object.values(TRACK_TYPES).includes(type) ? type : TRACK_TYPES.POSITIVE,
-      visibleToPlayers: field("new-visibleToPlayers")?.checked === true
+      visibleToPlayers: field("new-visibleToPlayers")?.checked === true,
+      postToChat: field("new-postToChat")?.checked === true
     };
   }
 
   /**
    * Read the configuration fields for an existing track's card.
    * @param {string} id
-   * @returns {{title: string, target: number, type: string, visibleToPlayers: boolean}}
+   * @returns {{title: string, target: number, type: string, visibleToPlayers: boolean, postToChat: boolean}}
    */
   readTrackForm(id) {
     const root = this.element;
@@ -153,7 +154,8 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
       title: String(field("title")?.value ?? "").trim().slice(0, LIMITS.MAX_TITLE_LENGTH),
       target: clampInt(field("target")?.value, LIMITS.MIN_TARGET, LIMITS.MAX_TARGET),
       type: Object.values(TRACK_TYPES).includes(type) ? type : TRACK_TYPES.POSITIVE,
-      visibleToPlayers: field("visibleToPlayers")?.checked === true
+      visibleToPlayers: field("visibleToPlayers")?.checked === true,
+      postToChat: field("postToChat")?.checked === true
     };
   }
 
