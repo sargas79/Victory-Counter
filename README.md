@@ -137,7 +137,7 @@ vc.getTrack(alarm.id);                     // read one track
 All mutating calls are GM-only and fail with a notification for other users.
 
 `addSuccess()` and `setCounts()` still work as deprecated aliases for
-`increase()` and `setProgress()`. `addFailure()` was removed in 3.0 — model a
+`increase()` and `setProgress()`. `addFailure()` was removed in 1.0.3 — model a
 "bad" track as a separate negative track instead.
 
 ## Data schema

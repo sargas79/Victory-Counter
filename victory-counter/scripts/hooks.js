@@ -201,7 +201,7 @@ async function onSetup() {
  * has not yet logged in still renders correctly for players.
  */
 async function onReady() {
-  // Ordered: pull data over from the pre-4.0 module id first, so the schema
+  // Ordered: pull data over from the pre-1.0.5 module id first, so the schema
   // migration below sees it and treats it like any other stored data.
   try {
     await importLegacyModuleData(sanitizeTracks);

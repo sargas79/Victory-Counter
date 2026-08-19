@@ -65,7 +65,7 @@ export function registerSettings(onStateChange, onLocalChange) {
     default: {}
   });
 
-  // Latch for the one-time import from the pre-4.0 `pf2e-victory-counter` id.
+  // Latch for the one-time import from the pre-1.0.5 `pf2e-victory-counter` id.
   // Written whether or not anything was found, so the lookup runs exactly once.
   game.settings.register(MODULE_ID, SETTINGS.IMPORTED_LEGACY_MODULE, {
     name: "PVC.Settings.ImportedLegacyModule.Name",
