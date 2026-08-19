@@ -39,6 +39,7 @@ import { migrateTrackData } from "./migration.js";
  * @property {number}  current          Current progress. Never negative.
  * @property {number}  target           Progress needed to complete the track.
  * @property {boolean} visibleToPlayers Whether non-GM users may see this track.
+ * @property {boolean} postToChat       Whether progress changes announce in chat.
  * @property {string}  status           One of STATUS.
  * @property {object}  [legacy]         Verbatim pre-3.0 fields, never read at runtime.
  */
@@ -68,6 +69,8 @@ export function sanitizeTrack(raw) {
   merged.id = String(merged.id || "").trim() || generateId();
   merged.active = merged.active === true;
   merged.visibleToPlayers = merged.visibleToPlayers === true;
+  // Missing on tracks stored before this option existed; those keep announcing.
+  merged.postToChat = merged.postToChat !== false;
 
   merged.title = String(merged.title ?? "").slice(0, LIMITS.MAX_TITLE_LENGTH);
 
@@ -576,7 +579,7 @@ export function hasUndo() {
 
 /**
  * Post a chat card summarizing a track's new state, if the GM enabled chat
- * updates. The card is whispered to GMs when the track is hidden from players.
+ * updates and the track itself opts in. The card is whispered to GMs when the track is hidden from players.
  * @param {Track} track
  * @param {Track} previous
  * @param {string}    [reason]
@@ -585,6 +588,7 @@ export function hasUndo() {
 async function postUpdateCard(track, previous, reason) {
   if (!game.user.isGM) return;
   if (!track.active) return;
+  if (track.postToChat === false) return;
   let enabled = false;
   try {
     enabled = game.settings.get(MODULE_ID, SETTINGS.POST_CHAT) === true;

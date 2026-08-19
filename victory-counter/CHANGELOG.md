@@ -3,7 +3,7 @@
 All notable changes to Victory Counter are documented here.
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [4.0.0] - 2026-08-18
+## [1.0.6] - 2026-08-18
 
 The module is no longer tied to Pathfinder 2e. Nothing about how it works has
 changed — the counter never read system data in the first place — but it was
@@ -48,6 +48,14 @@ packaged, named and gated as a PF2e module, and it is now none of those things.
 
   Per-user display preferences (anchor, width, scale, collapsed state) are not
   imported. They are cosmetic, per-client, and set again on first use.
+
+- **Per-track "Announce in Chat" option.** Each track now carries its own
+  `postToChat` flag, editable in the GM control panel when adding a track and on
+  every existing track card. When it is off, progress changes to that track post
+  no chat card while other tracks keep announcing. The world setting "Post
+  Progress to Chat" still acts as the master switch. Tracks stored before this
+  option existed default to on, so behaviour is unchanged until a GM opts out.
+
 
 ## [3.0.1] - 2026-08-17
 

@@ -129,6 +129,8 @@ export const DEFAULT_TRACK = Object.freeze({
   /** Progress needed to complete the track. */
   target: 6,
   visibleToPlayers: true,
+  /** Post a chat card when this track's progress changes. Gated by the world setting. */
+  postToChat: true,
   status: STATUS.RUNNING,
   /**
    * The most recent counter change, shown in the HUD footer.
