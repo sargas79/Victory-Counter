@@ -58,14 +58,6 @@
     <p class="hint">{{localize "PVC.Panel.VisibleToPlayersHint"}}</p>
   </div>
 
-  <div class="form-group">
-    <label for="pvc-new-post-chat">{{localize "PVC.Panel.PostToChat"}}</label>
-    <div class="form-fields">
-      <input type="checkbox" id="pvc-new-post-chat" name="new-postToChat" checked>
-    </div>
-    <p class="hint">{{localize "PVC.Panel.PostToChatHint"}}</p>
-  </div>
-
   <footer class="pvc-panel-actions">
     <button type="button" class="pvc-primary" data-action="addTrack">
       <i class="fa-solid fa-flag-checkered" aria-hidden="true"></i>
@@ -158,11 +150,13 @@
     </div>
 
     <div class="form-group">
-      <label for="pvc-post-chat-{{id}}">{{localize "PVC.Panel.PostToChat"}}</label>
+      <label for="pvc-announce-{{id}}">{{localize "PVC.Panel.PostToChat"}}</label>
       <div class="form-fields">
-        <input type="checkbox" id="pvc-post-chat-{{id}}" name="postToChat-{{id}}"
-               {{checked postToChat}}
-               data-tooltip="{{localize 'PVC.Panel.PostToChatHint'}}">
+        <span class="pvc-flag {{#if announcing}}pvc-flag-on{{else}}pvc-flag-off{{/if}}">
+          <i class="fa-solid {{#if announcing}}fa-comment{{else}}fa-comment-slash{{/if}}"
+             aria-hidden="true"></i>
+          {{#if announcing}}{{localize "PVC.Panel.AnnounceOn"}}{{else}}{{localize "PVC.Panel.AnnounceOff"}}{{/if}}
+        </span>
       </div>
     </div>
 
@@ -174,6 +168,13 @@
       <button type="button" data-action="toggleVisibility" data-id="{{id}}">
         <i class="fa-solid {{#if visibleToPlayers}}fa-eye{{else}}fa-eye-slash{{/if}}" aria-hidden="true"></i>
         {{localize "PVC.Panel.ToggleVisibility"}}
+      </button>
+      <button type="button" id="pvc-announce-{{id}}"
+              data-action="toggleAnnounce" data-id="{{id}}"
+              data-tooltip="{{localize 'PVC.Panel.PostToChatHint'}}"
+              aria-pressed="{{#if announcing}}true{{else}}false{{/if}}">
+        <i class="fa-solid {{#if announcing}}fa-comment-slash{{else}}fa-comment{{/if}}" aria-hidden="true"></i>
+        {{#if announcing}}{{localize "PVC.Panel.StopAnnouncing"}}{{else}}{{localize "PVC.Panel.StartAnnouncing"}}{{/if}}
       </button>
     </footer>
 

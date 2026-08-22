@@ -3,6 +3,20 @@
 All notable changes to Victory Counter are documented here.
 This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **"Announce in Chat" is now a live toggle, not a start-time setting.** The
+  flag used to be a checkbox set when adding a track and only re-applied along
+  with the rest of a card's configuration via "Apply Changes". It is now its own
+  button on every track card that flips announcements on or off immediately, at
+  any point in the track's life, and the card shows the current state. The
+  checkbox is gone from the "Add a Track" form — new tracks announce by default
+  and the GM turns it off whenever they want. Applying other configuration
+  changes no longer touches the flag. New API method `toggleAnnounce(id)`;
+  `configure(id, {postToChat})` still works for macros.
+
 ## [2.0.0] - 2026-08-18
 
 ### Added

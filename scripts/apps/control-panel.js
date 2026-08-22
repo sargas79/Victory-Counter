@@ -33,6 +33,7 @@ import {
   removeTrack,
   resetTrackProgress,
   ringsEnabled,
+  toggleTrackAnnounce,
   toggleTrackVisibility,
   undo,
   updateTrackConfig
@@ -71,6 +72,7 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
       resetProgress: this.onReset,
       removeTrack: this.onRemove,
       toggleVisibility: this.onToggleVisibility,
+      toggleAnnounce: this.onToggleAnnounce,
       moveTrack: this.onMove,
       undoChange: this.onUndo
     }
@@ -93,6 +95,7 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
         ...track,
         statusLabel: game.i18n.localize(`PVC.Status.${track.status}`),
         complete: track.status === STATUS.COMPLETE,
+        announcing: track.postToChat !== false,
         negative,
         typeLabel: game.i18n.localize(negative ? "PVC.Type.Negative" : "PVC.Type.Positive"),
         typeTooltip: game.i18n.localize(
@@ -126,7 +129,9 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
 
   /**
    * Read the "add track" configuration fields.
-   * @returns {{title: string, target: number, type: string, visibleToPlayers: boolean, postToChat: boolean}}
+   * Announcing in chat is deliberately not part of this form: it is a running
+   * toggle on the track card, changeable at any time.
+   * @returns {{title: string, target: number, type: string, visibleToPlayers: boolean}}
    */
   readNewTrackForm() {
     const root = this.element;
@@ -136,15 +141,16 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
       title: String(field("new-title")?.value ?? "").trim().slice(0, LIMITS.MAX_TITLE_LENGTH),
       target: clampInt(field("new-target")?.value, LIMITS.MIN_TARGET, LIMITS.MAX_TARGET),
       type: Object.values(TRACK_TYPES).includes(type) ? type : TRACK_TYPES.POSITIVE,
-      visibleToPlayers: field("new-visibleToPlayers")?.checked === true,
-      postToChat: field("new-postToChat")?.checked === true
+      visibleToPlayers: field("new-visibleToPlayers")?.checked === true
     };
   }
 
   /**
-   * Read the configuration fields for an existing track's card.
+   * Read the configuration fields for an existing track's card. `postToChat`
+   * is left out on purpose: it has its own immediate toggle, so applying other
+   * config changes must never overwrite it.
    * @param {string} id
-   * @returns {{title: string, target: number, type: string, visibleToPlayers: boolean, postToChat: boolean}}
+   * @returns {{title: string, target: number, type: string, visibleToPlayers: boolean}}
    */
   readTrackForm(id) {
     const root = this.element;
@@ -154,8 +160,7 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
       title: String(field("title")?.value ?? "").trim().slice(0, LIMITS.MAX_TITLE_LENGTH),
       target: clampInt(field("target")?.value, LIMITS.MIN_TARGET, LIMITS.MAX_TARGET),
       type: Object.values(TRACK_TYPES).includes(type) ? type : TRACK_TYPES.POSITIVE,
-      visibleToPlayers: field("visibleToPlayers")?.checked === true,
-      postToChat: field("postToChat")?.checked === true
+      visibleToPlayers: field("visibleToPlayers")?.checked === true
     };
   }
 
@@ -310,6 +315,18 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
    */
   static async onToggleVisibility(event, target) {
     await toggleTrackVisibility(target.dataset.id);
+    await this.render();
+  }
+
+  /**
+   * Turn this track's chat announcements on or off. Applies immediately, at any
+   * point in the track's life.
+   * @this {VictoryCounterPanel}
+   * @param {PointerEvent} event
+   * @param {HTMLElement}  target
+   */
+  static async onToggleAnnounce(event, target) {
+    await toggleTrackAnnounce(target.dataset.id);
     await this.render();
   }
 

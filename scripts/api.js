@@ -18,6 +18,7 @@ import {
   resetTrackProgress,
   setTrackCurrent,
   setTrackType,
+  toggleTrackAnnounce,
   toggleTrackVisibility,
   undo,
   updateTrackConfig
@@ -78,6 +79,7 @@ function deprecate(oldName, newName) {
  * @property {(id: string) => Promise<object|null>}                  reset
  * @property {(id: string) => Promise<object[]|null>}                end
  * @property {(id: string) => Promise<object|null>}                  toggleVisibility
+ * @property {(id: string) => Promise<object|null>}                  toggleAnnounce
  * @property {(id: string, direction: -1|1) => Promise<object[]|null>} move
  * @property {() => Promise<object[]|null>}                          undo
  * @property {() => boolean}                                         canUndo
@@ -129,6 +131,12 @@ export const api = {
 
   /** Flip whether players can see a specific track. */
   toggleVisibility: (id) => toggleTrackVisibility(id),
+
+  /**
+   * Flip whether a track announces progress in chat. Changeable at any time,
+   * and effective from the next progress change onwards.
+   */
+  toggleAnnounce: (id) => toggleTrackAnnounce(id),
 
   /** Reorder a track up (-1) or down (1). */
   move: (id, direction) => moveTrack(id, direction),
