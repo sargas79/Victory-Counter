@@ -150,7 +150,7 @@
     </div>
 
     <div class="form-group">
-      <label>{{localize "PVC.Panel.PostToChat"}}</label>
+      <label for="pvc-announce-{{id}}">{{localize "PVC.Panel.PostToChat"}}</label>
       <div class="form-fields">
         <span class="pvc-flag {{#if announcing}}pvc-flag-on{{else}}pvc-flag-off{{/if}}">
           <i class="fa-solid {{#if announcing}}fa-comment{{else}}fa-comment-slash{{/if}}"
@@ -169,7 +169,8 @@
         <i class="fa-solid {{#if visibleToPlayers}}fa-eye{{else}}fa-eye-slash{{/if}}" aria-hidden="true"></i>
         {{localize "PVC.Panel.ToggleVisibility"}}
       </button>
-      <button type="button" data-action="toggleAnnounce" data-id="{{id}}"
+      <button type="button" id="pvc-announce-{{id}}"
+              data-action="toggleAnnounce" data-id="{{id}}"
               data-tooltip="{{localize 'PVC.Panel.PostToChatHint'}}"
               aria-pressed="{{#if announcing}}true{{else}}false{{/if}}">
         <i class="fa-solid {{#if announcing}}fa-comment-slash{{else}}fa-comment{{/if}}" aria-hidden="true"></i>

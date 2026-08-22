@@ -547,15 +547,15 @@ export async function toggleTrackAnnounce(id) {
     ui.notifications.warn(game.i18n.localize("PVC.Notify.NoTrack"));
     return null;
   }
-  const announce = track.postToChat === false;
-  const updated = { ...track, postToChat: announce };
+  const postToChat = track.postToChat === false;
+  const updated = { ...track, postToChat };
   const result = await persistTracks(
     current.map((t) => (t.id === id ? updated : t)),
     { reason: game.i18n.localize("PVC.Reason.Reconfigured") }
   );
   if (result) {
     ui.notifications.info(
-      game.i18n.localize(announce ? "PVC.Notify.NowAnnouncing" : "PVC.Notify.NotAnnouncing")
+      game.i18n.localize(postToChat ? "PVC.Notify.NowAnnouncing" : "PVC.Notify.NotAnnouncing")
     );
   }
   return result ? result.find((t) => t.id === id) ?? null : null;
