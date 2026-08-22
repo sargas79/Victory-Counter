@@ -989,6 +989,19 @@
   height: 28px;
 }
 
+/* Read-only status of the per-track chat announcement toggle. */
+.pvc-panel .pvc-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.pvc-panel .pvc-flag-on { color: var(--pvc-accent); }
+
+.pvc-panel .pvc-flag-off { opacity: 0.65; }
+
 .pvc-panel .pvc-primary {
   color: var(--pvc-accent);
   border-color: var(--pvc-accent);

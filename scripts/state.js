@@ -533,6 +533,35 @@ export async function toggleTrackVisibility(id) {
 }
 
 /**
+ * Flip whether this track announces its progress changes in chat. Takes effect
+ * immediately for the next change; it is not tied to when the track was
+ * created. The world setting "Post Progress to Chat" still gates every card.
+ * @param {string} id
+ * @returns {Promise<Track|null>}
+ */
+export async function toggleTrackAnnounce(id) {
+  if (!assertGM()) return null;
+  const current = getTracks();
+  const track = current.find((t) => t.id === id);
+  if (!track?.active) {
+    ui.notifications.warn(game.i18n.localize("PVC.Notify.NoTrack"));
+    return null;
+  }
+  const announce = track.postToChat === false;
+  const updated = { ...track, postToChat: announce };
+  const result = await persistTracks(
+    current.map((t) => (t.id === id ? updated : t)),
+    { reason: game.i18n.localize("PVC.Reason.Reconfigured") }
+  );
+  if (result) {
+    ui.notifications.info(
+      game.i18n.localize(announce ? "PVC.Notify.NowAnnouncing" : "PVC.Notify.NotAnnouncing")
+    );
+  }
+  return result ? result.find((t) => t.id === id) ?? null : null;
+}
+
+/**
  * Restore the single-level undo snapshot for the whole track list.
  * @returns {Promise<Track[]|null>}
  */
