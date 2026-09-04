@@ -143,7 +143,15 @@ export const LIMITS = Object.freeze({
   MAX_OVERLAY_WIDTH: 1200,
   /** Control panel window, enforced in CSS and in `setPosition`. */
   MIN_PANEL_WIDTH: 380,
-  MIN_PANEL_HEIGHT: 320
+  MIN_PANEL_HEIGHT: 320,
+  /**
+   * Threshold editor window, enforced the same way. Wider than the panel's
+   * floor because a rung is a row of four fields that has to stay readable, and
+   * shorter because the editor is a list: it scrolls rather than reflowing, so
+   * it stays usable at a height that would leave the panel unusable.
+   */
+  MIN_EDITOR_WIDTH: 420,
+  MIN_EDITOR_HEIGHT: 260
 });
 
 /**

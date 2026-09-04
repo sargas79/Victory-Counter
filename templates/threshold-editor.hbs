@@ -13,6 +13,12 @@
 <p class="notes">{{localize "PVC.Notify.NoTrack"}}</p>
 {{else}}
 
+{{!-- Everything except Save scrolls. Save is the only control that must stay
+      reachable at any window size: pinning the explanation and the Add button
+      as well left no room for either at the minimum height, pushing Save off
+      the bottom of the frame entirely. --}}
+<div class="pvc-threshold-scroll">
+
 <fieldset class="pvc-threshold-intro">
   <legend>{{localize "PVC.Threshold.LadderLegend"}}</legend>
   <p class="hint">
@@ -99,6 +105,8 @@
     {{/if}}
   </footer>
 </fieldset>
+
+</div>
 
 <footer class="pvc-panel-actions pvc-threshold-save">
   <button type="button" class="pvc-primary" data-action="saveLadder">
