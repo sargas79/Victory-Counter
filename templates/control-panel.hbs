@@ -10,7 +10,7 @@
       attribute on the enclosing `[data-mode-scope]`, which the mode select
       rewrites on change. The scope sits on the fieldset / track card rather
       than on an inner wrapper so that it encloses the select as well as the
-      fields it governs â€” `#bindModeSwitches` finds it with `closest()`, which
+      fields it governs — `#bindModeSwitches` finds it with `closest()`, which
       only walks ancestors.
 
       Hidden fields stay in the DOM on purpose: the form readers still find
@@ -144,7 +144,11 @@
 
   <div class="pvc-track-grid">
   {{#each tracks}}
-  <div class="pvc-track-card{{#if negative}} pvc-negative{{/if}}{{#if complete}} pvc-resolved{{/if}}{{#if threshold}} pvc-threshold{{/if}}"
+  {{!-- Polarity and completion styling apply to progress tracks only. `type`
+        survives a switch to threshold mode, so a track that used to be Negative
+        would otherwise keep its red numerals while its band tone says the
+        opposite; and a threshold track never completes. --}}
+  <div class="pvc-track-card{{#if threshold}} pvc-threshold pvc-tone-{{tone}}{{else}}{{#if negative}} pvc-negative{{/if}}{{#if complete}} pvc-resolved{{/if}}{{/if}}"
        data-id="{{id}}" data-mode-scope data-mode="{{mode}}">
 
     <div class="pvc-panel-status-line">

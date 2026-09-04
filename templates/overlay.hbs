@@ -31,7 +31,11 @@
     </button>
   </div>
   {{#each tracks}}
-  <div class="pvc-compact pvc-{{status}}{{#if negative}} pvc-negative{{/if}}{{#if ../isGM}} pvc-compact-adjust{{/if}}"
+  {{!-- Polarity styling is gated on mode for the same reason as on the card
+        below: `type` survives a switch to threshold mode, so a track that used
+        to be a Negative progress track would otherwise keep painting itself red
+        while its band says otherwise. --}}
+  <div class="pvc-compact pvc-{{status}}{{#if threshold}} pvc-threshold pvc-tone-{{tone}}{{else}}{{#if negative}} pvc-negative{{/if}}{{/if}}{{#if ../isGM}} pvc-compact-adjust{{/if}}"
        {{#if ../isGM}}role="button" tabindex="0" data-compact-adjust data-id="{{id}}"
        aria-label="{{localize 'PVC.Overlay.CompactAdjustLabel' progress=progressLabel}}"
        data-tooltip="{{localize 'PVC.Overlay.CompactAdjustHint'}}"

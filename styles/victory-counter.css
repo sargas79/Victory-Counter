@@ -1256,6 +1256,15 @@
 
 #pvc-overlay .pvc-card.pvc-threshold .pvc-ladder-fill { opacity: 0.6; }
 
+/* The compact chip's bar tracks the band's tone rather than the track's
+   polarity, which threshold mode does not use. Without this it would fall back
+   to the plain accent for every band, losing the one cue the chip has room for
+   besides the band's name. */
+#pvc-overlay .pvc-compact.pvc-threshold .pvc-track-fill {
+  background: var(--pvc-tone, var(--pvc-accent));
+  box-shadow: none;
+}
+
 /* --- Control panel ------------------------------------------------------ */
 
 /* Only the selected mode's fields are shown. The others stay in the DOM so the
