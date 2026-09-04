@@ -86,6 +86,16 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   changes no longer touches the flag. New API method `toggleAnnounce(id)`;
   `configure(id, {postToChat})` still works for macros.
 
+### Fixed
+
+- **The "maximum tracks reached" warning showed a literal `{max}`.** A GM who
+  filled all ten track slots was told "The maximum of {max} tracks is already in
+  use" rather than the number. Foundry's `localize` Handlebars helper only routes
+  through `game.i18n.format` when it is given hash arguments, and this one call
+  passed none, so the placeholder reached the screen verbatim. Long-standing;
+  found while checking that every localized string used by the new threshold
+  interface resolves.
+
 ## [2.0.0] - 2026-08-18
 
 ### Added
