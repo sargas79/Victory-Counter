@@ -61,15 +61,25 @@ export function refitToViewport(app, { minWidth, minHeight }) {
   const width = Number(app.position.width);
   if (Number.isFinite(width) && width > maxWidth) update.width = maxWidth;
 
+  // Both directions matter. Overflowing the bottom or right edge is the common
+  // case, but a *negative* top or left is the worse one: a window whose title
+  // bar sits above the viewport cannot be dragged back, because the handle you
+  // would grab is off screen. Rearranging monitors is enough to produce it.
   const top = Number(app.position.top);
   const left = Number(app.position.left);
   const effectiveHeight = update.height ?? height;
   const effectiveWidth = update.width ?? width;
-  if (Number.isFinite(top) && top + effectiveHeight > window.innerHeight) {
-    update.top = Math.max(0, window.innerHeight - effectiveHeight);
+
+  const maxTop = Math.max(0, window.innerHeight - effectiveHeight);
+  const maxLeft = Math.max(0, window.innerWidth - effectiveWidth);
+
+  if (Number.isFinite(top)) {
+    const clamped = Math.min(Math.max(0, top), maxTop);
+    if (clamped !== top) update.top = clamped;
   }
-  if (Number.isFinite(left) && left + effectiveWidth > window.innerWidth) {
-    update.left = Math.max(0, window.innerWidth - effectiveWidth);
+  if (Number.isFinite(left)) {
+    const clamped = Math.min(Math.max(0, left), maxLeft);
+    if (clamped !== left) update.left = clamped;
   }
 
   if (Object.keys(update).length) app.setPosition(update);
