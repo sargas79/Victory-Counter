@@ -42,11 +42,15 @@ import {
   updateTrackConfig
 } from "../state.js";
 import { buildThresholdView } from "../threshold-view.js";
+import { clampToMinimum, refitToViewport } from "./window-fit.js";
 
 const { ApplicationV2, DialogV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
-/** Space left between the window and the viewport edge when refitting. */
-const VIEWPORT_MARGIN = 60;
+/** Minimum size for this window, shared by the CSS and by `setPosition`. */
+const BOUNDS = {
+  minWidth: LIMITS.MIN_PANEL_WIDTH,
+  minHeight: LIMITS.MIN_PANEL_HEIGHT
+};
 
 export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV2) {
   /** @override */
@@ -240,14 +244,7 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
    * @returns {object}
    */
   setPosition(position = {}) {
-    const next = { ...position };
-    if (typeof next.width === "number") {
-      next.width = Math.max(LIMITS.MIN_PANEL_WIDTH, next.width);
-    }
-    if (typeof next.height === "number") {
-      next.height = Math.max(LIMITS.MIN_PANEL_HEIGHT, next.height);
-    }
-    return super.setPosition(next);
+    return super.setPosition(clampToMinimum(position, BOUNDS));
   }
 
   /** @override */
@@ -283,37 +280,11 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
 
   /**
    * Keep the window inside the viewport after tracks are added or removed.
-   * Only ever shrinks the window, and only when it would otherwise overflow the
-   * screen — a GM who has sized the window down keeps that size.
+   * Shared with the threshold editor, which grows the same way for the same
+   * reason — see `window-fit.js`.
    */
   #refit() {
-    const el = this.element;
-    if (!el) return;
-
-    const maxHeight = Math.max(LIMITS.MIN_PANEL_HEIGHT, window.innerHeight - VIEWPORT_MARGIN);
-    const maxWidth = Math.max(LIMITS.MIN_PANEL_WIDTH, window.innerWidth - VIEWPORT_MARGIN);
-    const update = {};
-
-    const height = Number(this.position.height);
-    if (Number.isFinite(height) && height > maxHeight) update.height = maxHeight;
-
-    const width = Number(this.position.width);
-    if (Number.isFinite(width) && width > maxWidth) update.width = maxWidth;
-
-    // Pull the window back on screen if a previous session left it partly off,
-    // which would otherwise put the bottom-right resize handle out of reach.
-    const top = Number(this.position.top);
-    const left = Number(this.position.left);
-    const effectiveHeight = update.height ?? height;
-    const effectiveWidth = update.width ?? width;
-    if (Number.isFinite(top) && top + effectiveHeight > window.innerHeight) {
-      update.top = Math.max(0, window.innerHeight - effectiveHeight);
-    }
-    if (Number.isFinite(left) && left + effectiveWidth > window.innerWidth) {
-      update.left = Math.max(0, window.innerWidth - effectiveWidth);
-    }
-
-    if (Object.keys(update).length) this.setPosition(update);
+    refitToViewport(this, BOUNDS);
   }
 
   /* ---------------------------------------- */

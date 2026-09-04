@@ -17,21 +17,35 @@
 
 import { LIMITS, MODULE_ID, bandTone, generateId } from "../constants.js";
 import { getTrack, sanitizeThresholds, setTrackThresholds } from "../state.js";
+import { clampToMinimum, refitToViewport } from "./window-fit.js";
 
 const { ApplicationV2, DialogV2, HandlebarsApplicationMixin } = foundry.applications.api;
+
+/** Minimum size for this window, shared by the CSS and by `setPosition`. */
+const BOUNDS = {
+  minWidth: LIMITS.MIN_EDITOR_WIDTH,
+  minHeight: LIMITS.MIN_EDITOR_HEIGHT
+};
 
 export class ThresholdEditor extends HandlebarsApplicationMixin(ApplicationV2) {
   /** @override */
   static DEFAULT_OPTIONS = {
     id: "pvc-threshold-editor",
     tag: "form",
-    classes: ["pvc", "pvc-threshold-editor"],
+    // `pvc-panel` is carried deliberately: this is the same kind of window as
+    // the control panel and wants the same fieldset, label, input and button
+    // styling. Reusing the class means the two cannot drift apart visually, and
+    // the `pvc-threshold-editor` rules layer only the differences on top.
+    classes: ["pvc", "pvc-panel", "pvc-threshold-editor"],
     window: {
       title: "PVC.Threshold.EditorTitle",
       icon: "fa-solid fa-layer-group",
       resizable: true,
       minimizable: true
     },
+    // A concrete height rather than "auto" is what gives the window a stable box
+    // for its resize handle and lets the rung list own its own scrolling; #refit
+    // shrinks it when the display cannot fit this much.
     position: { width: 680, height: 600 },
     form: {
       // Saving is an explicit button; there is no native submit path.
@@ -106,6 +120,39 @@ export class ThresholdEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       atMax: rows.length >= LIMITS.MAX_THRESHOLDS,
       empty: rows.length === 0
     };
+  }
+
+  /* ---------------------------------------- */
+  /*  Sizing                                  */
+  /* ---------------------------------------- */
+
+  /**
+   * Enforce the minimum window size on every programmatic and drag-driven
+   * resize, so the persisted position matches what CSS will actually render.
+   * @override
+   * @param {object} [position]
+   * @returns {object}
+   */
+  setPosition(position = {}) {
+    return super.setPosition(clampToMinimum(position, BOUNDS));
+  }
+
+  /** @override */
+  _onRender(context, options) {
+    super._onRender(context, options);
+    // Adding or removing a rung changes how tall the list wants to be, and a
+    // full ladder is twelve rows of four fields — comfortably taller than a
+    // laptop display. Refit so the window stays on screen; the list scrolls
+    // inside it rather than the window growing past the bottom of the monitor.
+    this.#refit();
+  }
+
+  /**
+   * Keep the window inside the viewport. Shared with the control panel, which
+   * grows the same way for the same reason — see `window-fit.js`.
+   */
+  #refit() {
+    refitToViewport(this, BOUNDS);
   }
 
   /* ---------------------------------------- */

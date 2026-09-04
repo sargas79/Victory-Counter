@@ -901,8 +901,11 @@
   flex: 0 1 104px;
 }
 
+/* `textarea` is here for the threshold editor's band descriptions. Without it
+   the browser default applies — a white box in an otherwise dark form. */
 .pvc-panel input[type="text"],
 .pvc-panel input[type="number"],
+.pvc-panel textarea,
 .pvc-panel select {
   color: var(--pvc-text);
   background: var(--pvc-surface-2);
@@ -913,6 +916,7 @@
 
 .pvc-panel input[type="text"]:focus,
 .pvc-panel input[type="number"]:focus,
+.pvc-panel textarea:focus,
 .pvc-panel select:focus {
   border-color: var(--pvc-accent);
   box-shadow: none;
@@ -1289,12 +1293,57 @@
 
 /* --- Ladder editor ------------------------------------------------------ */
 
+/* Minimum window size. Same arrangement as the control panel: the browser
+   honours these over the inline size ApplicationV2 writes during a drag-resize,
+   and setPosition() clamps the persisted value to match. */
+.application.pvc-threshold-editor {
+  min-width: 420px;
+  min-height: 260px;
+}
+
+/* Colours, typography and padding come from the shared `.pvc-panel` rules; only
+   the scrolling behaviour differs. The rung list is the only scroll container
+   (below), so the frame itself never scrolls — that is what keeps "Add
+   Threshold" and "Save Thresholds" on screen with a full twelve-rung ladder on
+   a short display. Overrides `.pvc-panel .window-content`, which scrolls its
+   whole content instead.
+
+   The flex chain from here down to .pvc-threshold-list must be unbroken, and
+   every link needs `min-height: 0`, or the list refuses to shrink below its
+   content and the overflow never engages. */
+.pvc-threshold-editor .window-content,
+.application.pvc-threshold-editor .window-content {
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+
 .pvc-threshold-editor .pvc-threshold-body {
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 4px;
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
 }
+
+/* Save is the only pinned control. An earlier arrangement also pinned the
+   explanation and the Add button; together those come to roughly 280px of fixed
+   chrome, which at the minimum window height left the rung list zero pixels tall
+   and pushed Save out of the frame altogether. Scrolling everything but Save
+   keeps the one control that must always be reachable always reachable. */
+.pvc-threshold-editor .pvc-threshold-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* Reserve the gutter so rows do not shift sideways when the bar appears. */
+  padding-right: 4px;
+}
+
+.pvc-threshold-editor .pvc-threshold-save { flex: 0 0 auto; }
 
 .pvc-threshold-editor .pvc-threshold-row {
   padding: 8px 10px;
@@ -1339,7 +1388,10 @@
   font-size: 12px;
 }
 
-.pvc-threshold-editor .pvc-threshold-save { justify-content: flex-end; }
+/* No `justify-content` here: the inherited `.pvc-panel .pvc-panel-actions
+   button { flex: 1 1 auto }` stretches the sole Save button across the footer,
+   so any alignment rule is dead. Full width is the right answer for a single
+   primary action anyway, and it matches the Add button above it. */
 
 /* --- Chat card ---------------------------------------------------------- */
 

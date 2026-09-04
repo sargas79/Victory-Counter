@@ -82,8 +82,16 @@ export function sanitizeThreshold(raw) {
   return {
     id: String(source.id ?? "").trim() || generateId(),
     value: clampInt(source.value, LIMITS.MIN_VALUE, LIMITS.MAX_VALUE),
-    label: String(source.label ?? "").slice(0, LIMITS.MAX_THRESHOLD_LABEL),
-    description: String(source.description ?? "").slice(0, LIMITS.MAX_THRESHOLD_DESCRIPTION),
+    // Trimmed before slicing, and trimmed at all, because "is this named?" is
+    // asked with `label ||` when the band is displayed but with `label.trim()`
+    // when the editor offers to warn about unnamed bands. Left untrimmed, a
+    // label of spaces is "named" to the first and "unnamed" to the second: the
+    // confirmation promises a fallback name the render then does not use, and
+    // the band shows up blank. Trimming here settles it for every write path.
+    label: String(source.label ?? "").trim().slice(0, LIMITS.MAX_THRESHOLD_LABEL),
+    description: String(source.description ?? "")
+      .trim()
+      .slice(0, LIMITS.MAX_THRESHOLD_DESCRIPTION),
     // Missing on a rung written before this option existed; those keep announcing.
     announce: source.announce !== false
   };
@@ -144,7 +152,11 @@ export function sanitizeTrack(raw) {
   // Missing on tracks stored before this option existed; those keep announcing.
   merged.postToChat = merged.postToChat !== false;
 
-  merged.title = String(merged.title ?? "").slice(0, LIMITS.MAX_TITLE_LENGTH);
+  // Trimmed for the same reason as a rung's label just above: the control panel
+  // trims before it writes, so a title of spaces can only arrive through the
+  // API — and it would then be truthy everywhere the default name is chosen
+  // with `title ||`, putting a blank heading on the card instead.
+  merged.title = String(merged.title ?? "").trim().slice(0, LIMITS.MAX_TITLE_LENGTH);
 
   merged.type = Object.values(TRACK_TYPES).includes(merged.type)
     ? merged.type
