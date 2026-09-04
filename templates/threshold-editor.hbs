@@ -1,0 +1,112 @@
+{{!-- The threshold ladder editor. One row per rung, held as a local draft until
+      the GM saves; nothing here writes to the world on its own.
+
+      Rows are addressed with `data-field` rather than `name`: twelve rows of
+      identically-named inputs would form an ambiguous submission, and this form
+      is never submitted natively anyway.
+
+      An ApplicationV2 template part must resolve to exactly one root element. --}}
+
+<div class="pvc-threshold-body">
+
+{{#if missing}}
+<p class="notes">{{localize "PVC.Notify.NoTrack"}}</p>
+{{else}}
+
+<fieldset class="pvc-threshold-intro">
+  <legend>{{localize "PVC.Threshold.LadderLegend"}}</legend>
+  <p class="hint">
+    {{localize "PVC.Threshold.LadderHint"}}
+  </p>
+  <p class="notes">
+    {{localize "PVC.Threshold.RangeNotice" min=track.min max=track.max start=track.start}}
+  </p>
+</fieldset>
+
+<fieldset class="pvc-threshold-rows">
+  <legend>{{localize "PVC.Threshold.RungsLegend"}}</legend>
+
+  {{#if empty}}
+  <p class="notes">{{localize "PVC.Threshold.NoRungs"}}</p>
+  {{/if}}
+
+  {{#each rows}}
+  <div class="pvc-threshold-row pvc-tone-{{tone}}" data-threshold-row data-id="{{id}}">
+
+    <div class="pvc-threshold-row-head">
+      <span class="pvc-tone-badge" data-tooltip="{{localize 'PVC.Threshold.ToneHint'}}">
+        <i class="fa-solid {{#if (eq tone 'positive')}}fa-arrow-up{{else if (eq tone 'negative')}}fa-arrow-down{{else}}fa-equals{{/if}}"
+           aria-hidden="true"></i>
+        {{toneLabel}}
+      </span>
+      <button type="button" class="pvc-danger pvc-threshold-remove"
+              data-action="removeRow" data-id="{{id}}"
+              data-tooltip="{{localize 'PVC.Threshold.RemoveRung'}}"
+              aria-label="{{localize 'PVC.Threshold.RemoveRung'}}">
+        <i class="fa-solid fa-trash" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <div class="pvc-field-row">
+      <div class="form-group pvc-field-narrow">
+        <label for="pvc-th-value-{{id}}">{{localize "PVC.Threshold.Value"}}</label>
+        <div class="form-fields">
+          <input type="number" id="pvc-th-value-{{id}}" data-field="value" value="{{value}}"
+                 min="{{../limits.MIN_VALUE}}" max="{{../limits.MAX_VALUE}}" step="1"
+                 data-tooltip="{{localize 'PVC.Threshold.ValueHint'}}">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="pvc-th-label-{{id}}">{{localize "PVC.Threshold.Label"}}</label>
+        <div class="form-fields">
+          <input type="text" id="pvc-th-label-{{id}}" data-field="label" value="{{label}}"
+                 maxlength="{{../limits.MAX_THRESHOLD_LABEL}}"
+                 placeholder="{{localize 'PVC.Threshold.LabelPlaceholder'}}">
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="pvc-th-desc-{{id}}">{{localize "PVC.Threshold.Description"}}</label>
+      <div class="form-fields">
+        <textarea id="pvc-th-desc-{{id}}" data-field="description" rows="2"
+                  maxlength="{{../limits.MAX_THRESHOLD_DESCRIPTION}}"
+                  placeholder="{{localize 'PVC.Threshold.DescriptionPlaceholder'}}">{{description}}</textarea>
+      </div>
+      <p class="hint">{{localize "PVC.Threshold.DescriptionHint"}}</p>
+    </div>
+
+    <div class="form-group">
+      <label for="pvc-th-announce-{{id}}">{{localize "PVC.Threshold.Announce"}}</label>
+      <div class="form-fields">
+        <input type="checkbox" id="pvc-th-announce-{{id}}" data-field="announce"
+               {{checked announce}}
+               data-tooltip="{{localize 'PVC.Threshold.AnnounceHint'}}">
+      </div>
+    </div>
+
+  </div>
+  {{/each}}
+
+  <footer class="pvc-panel-actions">
+    <button type="button" data-action="addRow" {{disabled atMax}}>
+      <i class="fa-solid fa-plus" aria-hidden="true"></i>
+      {{localize "PVC.Threshold.AddRung"}}
+    </button>
+    {{#if atMax}}
+    <span class="notes">{{localize "PVC.Threshold.MaxRungs" max=limits.MAX_THRESHOLDS}}</span>
+    {{/if}}
+  </footer>
+</fieldset>
+
+<footer class="pvc-panel-actions pvc-threshold-save">
+  <button type="button" class="pvc-primary" data-action="saveLadder">
+    <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+    {{localize "PVC.Threshold.SaveLadder"}}
+  </button>
+</footer>
+
+{{/if}}
+
+</div>

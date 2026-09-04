@@ -34,11 +34,13 @@ import {
   adjustTrack,
   getVisibleTracks,
   hasUndo,
+  isThresholdTrack,
   ringsEnabled,
   setTrackCurrent,
   toggleTrackVisibility,
   undo
 } from "../state.js";
+import { buildThresholdView } from "../threshold-view.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -80,7 +82,8 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
     const tracks = getVisibleTracks().map((track) => {
       const percent = progressPercent(track.current, track.target);
       const negative = track.type === TRACK_TYPES.NEGATIVE;
-      return {
+
+      const base = {
         ...track,
         displayTitle: track.title || game.i18n.localize("PVC.DefaultTitle"),
         percent: Math.round(percent),
@@ -99,6 +102,22 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
         complete: track.status === STATUS.COMPLETE,
         statusLabel: game.i18n.localize(`PVC.Status.${track.status}`),
         lastChange: this.#formatLastChange(track)
+      };
+
+      if (!isThresholdTrack(track)) return { ...base, threshold: false };
+
+      // A threshold track replaces the progress readout wholesale, including its
+      // aria label — "4 of 12" says nothing useful when the meaning lives in the
+      // band rather than in the distance to a target.
+      //
+      // Rung *numbers* are the GM's to give away: players see the ticks and
+      // their own band either way, and the rest of the ladder only when the GM
+      // has revealed it.
+      return {
+        ...base,
+        ...buildThresholdView(track, {
+          showLadder: isGM || track.revealLadder === true
+        })
       };
     });
 

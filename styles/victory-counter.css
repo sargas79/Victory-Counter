@@ -1077,3 +1077,310 @@
   background: rgba(180, 64, 44, 0.16);
   border-color: #b4402c;
 }
+
+/* ==========================================================================
+   Threshold tracks
+   --------------------------------------------------------------------------
+   A threshold track is read against a ladder rather than toward a target, so
+   it gets its own readout: a continuous rail from the track's minimum to its
+   maximum, a tick per threshold, and a marker where the value currently sits.
+
+   The rail is continuous rather than segmented on purpose. Bands are rarely
+   equal in width, and drawing them as equal segments would misrepresent how
+   far a single point actually moves the needle.
+
+   Tone (positive / neutral / negative, derived from where a band sits relative
+   to the track's start) is never carried by colour alone: every place a tone
+   colour appears, an arrow icon and a written band name appear with it.
+   ========================================================================== */
+
+.pvc .pvc-tone-positive { --pvc-tone: var(--pvc-accent); }
+.pvc .pvc-tone-neutral  { --pvc-tone: var(--pvc-neutral-400); }
+.pvc .pvc-tone-negative { --pvc-tone: var(--pvc-negative); }
+
+/* --- Band badge --------------------------------------------------------- */
+
+.pvc .pvc-band-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--pvc-tone, var(--pvc-neutral-400));
+}
+
+.pvc .pvc-band-badge .pvc-type-mark {
+  flex: 0 0 auto;
+  width: 11px;
+  height: 11px;
+  color: inherit;
+}
+
+.pvc .pvc-band-badge .pvc-type-mark svg { width: 100%; height: 100%; display: block; }
+
+/* --- The ladder --------------------------------------------------------- */
+
+.pvc .pvc-ladder {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+
+.pvc .pvc-ladder-rail {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--pvc-neutral-900);
+  box-shadow: inset 0 0 0 1px var(--pvc-hairline);
+  overflow: visible;
+}
+
+.pvc .pvc-ladder-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: var(--pvc-tone, var(--pvc-accent));
+  opacity: 0.55;
+  transition: width 220ms ease;
+}
+
+/* Where the track began, so the distance travelled is legible at a glance. */
+.pvc .pvc-ladder-origin {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 1px;
+  margin-left: -0.5px;
+  background: var(--pvc-neutral-500);
+  opacity: 0.9;
+}
+
+.pvc .pvc-ladder-tick {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--pvc-tone, var(--pvc-neutral-600));
+  opacity: 0.75;
+}
+
+.pvc .pvc-ladder-tick-current {
+  top: -4px;
+  bottom: -4px;
+  width: 3px;
+  margin-left: -1.5px;
+  opacity: 1;
+}
+
+.pvc .pvc-ladder-marker {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: var(--pvc-tone, var(--pvc-accent));
+  box-shadow: 0 0 0 2px var(--pvc-surface);
+  transition: left 220ms ease;
+}
+
+/* --- Rung numbers (GM, or a revealed ladder) ---------------------------- */
+
+.pvc .pvc-ladder-scale {
+  position: relative;
+  height: 13px;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--pvc-neutral-500);
+}
+
+.pvc .pvc-ladder-mark {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  color: var(--pvc-tone, var(--pvc-neutral-500));
+  opacity: 0.85;
+}
+
+.pvc .pvc-ladder-mark-current { font-weight: 700; opacity: 1; }
+
+.pvc .pvc-ladder-bounds {
+  display: flex;
+  justify-content: space-between;
+  font-size: 9px;
+  font-variant-numeric: tabular-nums;
+  color: var(--pvc-neutral-600);
+}
+
+/* --- HUD card ----------------------------------------------------------- */
+
+#pvc-overlay .pvc-card.pvc-threshold .pvc-kicker {
+  color: var(--pvc-tone, var(--pvc-neutral-400));
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  /* A band name is a phrase, not a percentage; let it wrap rather than clip. */
+  white-space: normal;
+  text-align: right;
+}
+
+#pvc-overlay .pvc-card.pvc-threshold .pvc-figure-value { color: var(--pvc-tone, inherit); }
+
+#pvc-overlay .pvc-band-description {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--pvc-neutral-400);
+}
+
+#pvc-overlay .pvc-compact-band {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--pvc-tone, var(--pvc-neutral-400));
+}
+
+#pvc-overlay .pvc-compact .pvc-type-mark.pvc-tone-positive,
+#pvc-overlay .pvc-compact .pvc-type-mark.pvc-tone-neutral,
+#pvc-overlay .pvc-compact .pvc-type-mark.pvc-tone-negative { color: var(--pvc-tone); }
+
+#pvc-overlay .pvc-card.pvc-threshold .pvc-ladder-fill { opacity: 0.6; }
+
+/* The compact chip's bar tracks the band's tone rather than the track's
+   polarity, which threshold mode does not use. Without this it would fall back
+   to the plain accent for every band, losing the one cue the chip has room for
+   besides the band's name. */
+#pvc-overlay .pvc-compact.pvc-threshold .pvc-track-fill {
+  background: var(--pvc-tone, var(--pvc-accent));
+  box-shadow: none;
+}
+
+/* --- Control panel ------------------------------------------------------ */
+
+/* Only the selected mode's fields are shown. The others stay in the DOM so the
+   form readers still find them and a mode switched twice loses nothing. */
+.pvc-panel [data-mode-scope][data-mode="progress"] [data-mode-group="threshold"],
+.pvc-panel [data-mode-scope][data-mode="threshold"] [data-mode-group="progress"] {
+  display: none;
+}
+
+.pvc-panel .pvc-ladder-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 4px 0 6px;
+}
+
+.pvc-panel .pvc-ladder-summary .notes { margin: 0; font-size: 11px; }
+
+.pvc-panel .pvc-track-card.pvc-threshold .pvc-ladder { margin-bottom: 6px; }
+
+/* --- Ladder editor ------------------------------------------------------ */
+
+.pvc-threshold-editor .pvc-threshold-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px;
+}
+
+.pvc-threshold-editor .pvc-threshold-row {
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  border-radius: var(--pvc-radius-md, 8px);
+  background: var(--pvc-surface-2);
+  /* The tone bar is a redundant cue: the row also states its tone in words. */
+  border-left: 3px solid var(--pvc-tone, var(--pvc-neutral-700));
+  box-shadow: inset 0 0 0 1px var(--pvc-hairline);
+}
+
+.pvc-threshold-editor .pvc-threshold-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.pvc-threshold-editor .pvc-tone-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pvc-tone, var(--pvc-neutral-400));
+}
+
+.pvc-threshold-editor .pvc-threshold-remove {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  line-height: 1;
+}
+
+.pvc-threshold-editor textarea {
+  width: 100%;
+  min-height: 44px;
+  resize: vertical;
+  font-family: var(--pvc-font);
+  font-size: 12px;
+}
+
+.pvc-threshold-editor .pvc-threshold-save { justify-content: flex-end; }
+
+/* --- Chat card ---------------------------------------------------------- */
+
+.pvc-chat-card.pvc-threshold-card .pvc-chat-band {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pvc-tone, inherit);
+}
+
+.pvc-chat-card.pvc-threshold-card .pvc-chat-crossing {
+  margin: 6px 0 4px;
+  padding: 5px 8px;
+  border-radius: var(--pvc-radius-sm, 4px);
+  background: rgba(145, 132, 217, 0.12);
+  border-left: 3px solid var(--pvc-tone, #9184d9);
+}
+
+.pvc-chat-card.pvc-threshold-card .pvc-crossing-line {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pvc-chat-card.pvc-threshold-card .pvc-crossing-arrow { opacity: 0.7; }
+
+.pvc-chat-card.pvc-threshold-card .pvc-crossing-passed {
+  margin: 3px 0 0;
+  font-size: 11px;
+  opacity: 0.75;
+}
+
+.pvc-chat-card.pvc-threshold-card .pvc-chat-band-description {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* The chat card is rendered inside Foundry's chat log, outside the HUD's own
+   colour context, so its tones are spelled out against the light chat surface
+   rather than inherited from the dark overlay palette. */
+.pvc-chat-card.pvc-threshold-card.pvc-tone-positive { --pvc-tone: #5d5294; }
+.pvc-chat-card.pvc-threshold-card.pvc-tone-neutral  { --pvc-tone: #595d6c; }
+.pvc-chat-card.pvc-threshold-card.pvc-tone-negative { --pvc-tone: #b4402c; }

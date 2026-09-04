@@ -187,7 +187,10 @@ async function onSetup() {
       `modules/${MODULE_ID}/templates/overlay.hbs`,
       `modules/${MODULE_ID}/templates/control-panel.hbs`,
       `modules/${MODULE_ID}/templates/chat-card.hbs`,
-      `modules/${MODULE_ID}/templates/progress-ring.hbs`
+      `modules/${MODULE_ID}/templates/progress-ring.hbs`,
+      `modules/${MODULE_ID}/templates/threshold-card.hbs`,
+      `modules/${MODULE_ID}/templates/threshold-editor.hbs`,
+      `modules/${MODULE_ID}/templates/threshold-ladder.hbs`
     ]);
   } catch (err) {
     logError("Failed to preload templates.", err);

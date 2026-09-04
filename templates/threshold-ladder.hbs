@@ -1,0 +1,50 @@
+{{!--
+  The scale a threshold track is read against, shared by the HUD and the GM
+  control panel.
+
+  Expects a threshold-shaped context: `min`, `max`, `ladderPercent`,
+  `startPercent`, `tone`, `progressLabel`, `showLadder`, and `ladder` — the rungs
+  as `{value, label, percent, tone, current}`.
+
+  The rail is one continuous bar from `min` to `max` rather than a segmented
+  track, because the bands are not equal in width and pretending otherwise would
+  misrepresent how far a point actually moves the needle.
+
+  Rung ticks are drawn for everyone; their *numbers* only render when
+  `showLadder` is set, which is what keeps the rest of the ladder GM-only while
+  still showing players that a scale exists and roughly where they sit on it.
+
+  The rail is aria-hidden and the wrapper carries the full label, so a screen
+  reader announces "Guard Awareness, 6, Uneasy Truce" rather than loose digits.
+--}}
+<div class="pvc-ladder pvc-tone-{{tone}}" role="img" aria-label="{{progressLabel}}">
+  <div class="pvc-ladder-rail" aria-hidden="true">
+    <div class="pvc-ladder-fill" style="width: {{ladderPercent}}%"></div>
+
+    {{!-- Where the track began, so the distance travelled is visible at a glance. --}}
+    <span class="pvc-ladder-origin" style="left: {{startPercent}}%"
+          data-tooltip="{{localize 'PVC.Threshold.StartMarker'}}"></span>
+
+    {{#each ladder}}
+    <span class="pvc-ladder-tick pvc-tone-{{tone}}{{#if current}} pvc-ladder-tick-current{{/if}}"
+          style="left: {{percent}}%"
+          data-tooltip="{{tooltip}}"></span>
+    {{/each}}
+
+    <span class="pvc-ladder-marker" style="left: {{ladderPercent}}%"></span>
+  </div>
+
+  {{#if showLadder}}
+  <div class="pvc-ladder-scale" aria-hidden="true">
+    {{#each ladder}}
+    <span class="pvc-ladder-mark pvc-tone-{{tone}}{{#if current}} pvc-ladder-mark-current{{/if}}"
+          style="left: {{percent}}%" data-tooltip="{{tooltip}}">{{value}}</span>
+    {{/each}}
+  </div>
+  {{/if}}
+
+  <div class="pvc-ladder-bounds" aria-hidden="true">
+    <span>{{min}}</span>
+    <span>{{max}}</span>
+  </div>
+</div>

@@ -3,22 +3,37 @@
 A shared, always-visible progress counter for **any game system** in
 **Foundry VTT v14**.
 
-The GM creates any number of named tracks, gives each one a target and a
-positive or negative polarity, and adjusts progress as the scene plays out.
-Every player sees the same live state in a collapsible on-screen HUD.
+The GM creates any number of named tracks and adjusts them as the scene plays
+out. Every player sees the same live state in a collapsible on-screen HUD.
 
-It suits any subsystem built on "fill a bar before the other bar fills": PF2e
-infiltration and research points, D&D 5e skill challenges and clocks, Blades in
-the Dark progress clocks, chase trackers, doom counters, faction heat.
+A track runs in one of two **modes**:
+
+- **Progress** — counts up from zero toward a target and completes there. Suits
+  any subsystem built on "fill a bar before the other bar fills": PF2e
+  infiltration and research points, D&D 5e skill challenges and clocks, Blades
+  in the Dark progress clocks, chase trackers, doom counters, faction heat.
+- **Thresholds** — starts at a value you choose, moves up *and* down, and takes
+  its meaning from the band it lands in rather than from a finish line. Suits
+  standing, reputation, morale, alert level, faction disposition — anything that
+  can get better or worse and where the interesting moments are the crossings.
 
 ## Features
 
 - **Shared state.** Up to 10 concurrent tracks, stored in a world setting and
   broadcast to every connected client automatically. No custom socket, no
   desync.
-- **One target per track.** A track has a name, a target, a current value and a
-  polarity. It completes when `current >= target`. Progress can never go below
-  zero.
+- **One target per progress track.** A progress track has a name, a target, a
+  current value and a polarity. It completes when `current >= target`. Progress
+  can never go below zero.
+- **Threshold ladders.** A threshold track carries up to 12 GM-described bands.
+  Each band has a value where it begins, a name, and a description of what it
+  means. Bands below the starting value read as negative, the band containing it
+  is the status quo, and bands above it read as positive — derived from the start
+  value, so there is nothing extra to tag.
+- **Band-change announcements.** When a threshold track moves into a different
+  band, in either direction, it can post a chat card naming the band and quoting
+  its description. Skipped bands are listed rather than swallowed. Toggle it per
+  track, and per band.
 - **Positive and negative tracks.** Positive is the default and keeps the
   module's accent colour. Negative tracks show their progress numbers and ring
   in red — plus an arrow icon and the written word *Negative*, so the
@@ -31,7 +46,8 @@ the Dark progress clocks, chase trackers, doom counters, faction heat.
 - **Draggable, resizable HUD.** Grab the title bar to move it, the bottom-right
   grip to resize it. Double-click either to reset. Position, width, scale and
   collapsed state are per-user.
-- **Compact mode.** Collapses to one slim chip per track.
+- **Compact mode.** Collapses to one slim chip per track — value and target on a
+  progress track, value and band name on a threshold track.
 - **GM quick controls.** `-` / `+` and a "set" field on the HUD itself, plus a
   full control panel. The eye button toggles player visibility in one click.
 - **Hide from players.** Run a track the party cannot see; chat cards are
@@ -78,22 +94,67 @@ New-Item -ItemType SymbolicLink -Path "$env:LOCALAPPDATA\FoundryVTT\Data\modules
 
 1. Select the **Token** scene controls; click the **sliders** icon
    (*Victory Counter Controls*).
-2. Fill in the track name, the **Target**, and the **Type**
-   (*Positive* or *Negative*).
+2. Fill in the track name and pick a **Mode**.
+   - *Progress*: set the **Target** and the **Type** (*Positive* or *Negative*).
+   - *Thresholds*: set **Start**, **Minimum** and **Maximum**.
 3. Leave **Visible to Players** on so the party can see the track; turn it off
    to run a hidden one.
 4. Click **Add Track**. Repeat for as many tracks as the scene needs.
-5. During play, use `-` / `+` in the panel or directly on the HUD. To jump to a
+5. For a threshold track, click **Edit Thresholds** on its card and describe each
+   band (see below).
+6. During play, use `-` / `+` in the panel or directly on the HUD. To jump to a
    value, type it into the track's "set" field and press Enter.
-6. **Undo Last Change** reverts the most recent change. **Reset Progress**
-   zeroes a track but keeps its setup. **End Track** removes it from every
-   screen.
+7. **Undo Last Change** reverts the most recent change. **Reset Progress**
+   zeroes a progress track; on a threshold track the same button reads **Reset to
+   Start** and returns it to its starting value. **End Track** removes it from
+   every screen.
 
 Resetting or ending a track always asks for confirmation first.
 
-By default a track that has reached its target refuses further increases. Turn
-on **Allow Progress Beyond Target** in the module settings if you want a track
-to keep counting past the finish line.
+By default a progress track that has reached its target refuses further
+increases. Turn on **Allow Progress Beyond Target** in the module settings if you
+want it to keep counting past the finish line. Threshold tracks ignore that
+setting: they are bounded by their own **Minimum** and **Maximum** instead.
+
+#### Threshold tracks
+
+Say the party's standing with a faction starts at **6**, can run from **0** to
+**12**, and matters at five points:
+
+| At value | Band | Means |
+| --- | --- | --- |
+| 0 | Blood Feud | Kill on sight. |
+| 3 | Strained | Doors close; prices double. |
+| 6 | Uneasy Truce | The status quo. |
+| 9 | Trusted | The back room is open to you. |
+| 12 | Sworn Allies | They come when called. |
+
+Create the track with Start 6, Minimum 0, Maximum 12, then add those five rungs
+in **Edit Thresholds**. The value sits in the highest band it has reached, so 7
+and 8 are still *Uneasy Truce*, and the band only changes when the value crosses
+into the next one.
+
+Because the start is 6, the two bands below it read as negative, the band at 6 is
+the status quo, and the two above it read as positive. There is nothing to tag by
+hand — move the start and the whole ladder re-reads itself.
+
+Announcements have three independent switches:
+
+| Switch | Where | Covers |
+| --- | --- | --- |
+| **Post Progress to Chat** | Module settings | Every card, for every track. Master switch. |
+| **Announce in Chat** | Track card | Every value change on that track. |
+| **Announce Band Changes** | Track card | Only crossings into a new band, either direction. |
+| **Announce This Band** | Ladder editor | Lets one band pass without comment. |
+
+A change that trips more than one posts a single card carrying all of it, not one
+card each. A jump that skips bands names the band it landed in and lists the ones
+it passed through. Rewriting the ladder never announces anything — the scale
+changing is not the same event as the value moving across it.
+
+**Show Players Every Threshold** is off by default: players see their current
+band, its description, and the shape of the scale, but not the other bands'
+numbers or descriptions. Turn it on to make the whole ladder public.
 
 ### Players
 
@@ -109,8 +170,11 @@ to keep counting past the finish line.
   Victory Counter** and are personal to you.
 
 Only the GM can create, rename, configure, retype, delete or adjust a track.
-Players see the name, the Positive/Negative indicator, the current value against
-the target, the ring (when enabled) and the completion state.
+On a progress track, players see the name, the Positive/Negative indicator, the
+current value against the target, the ring (when enabled) and the completion
+state. On a threshold track they see the name, the value, the band they are
+currently in and what it means, and where they sit on the scale — the rest of the
+ladder only if the GM has revealed it.
 
 ### Macro API
 
@@ -133,6 +197,34 @@ vc.getTracks();                            // read all current state
 vc.getTrack(alarm.id);                     // read one track
 ```
 
+Threshold tracks use the same value calls (`increase`, `decrease`, `adjust`,
+`setProgress`, `reset`) plus a ladder of their own:
+
+```js
+const standing = await vc.create({
+  title: "Faction Standing",
+  mode: vc.MODES.THRESHOLD,
+  start: 6, min: 0, max: 12
+});
+
+await vc.setThresholds(standing.id, [
+  { value: 0,  label: "Blood Feud",   description: "Kill on sight." },
+  { value: 3,  label: "Strained",     description: "Doors close; prices double." },
+  { value: 6,  label: "Uneasy Truce", description: "The status quo." },
+  { value: 9,  label: "Trusted",      description: "The back room is open to you." },
+  { value: 12, label: "Sworn Allies", description: "They come when called.", announce: false }
+]);
+
+await vc.increase(standing.id, 3);   // 6 -> 9, announces "Trusted"
+await vc.decrease(standing.id, 9);   // 9 -> 0, announces "Blood Feud"
+vc.getBand(standing.id);             // the band it currently sits in, or null
+await vc.toggleThresholdAnnounce(standing.id);
+```
+
+Rungs may be passed in any order; ids are generated for any that arrive without
+one, and the list is sorted, deduplicated by value and capped on the way in.
+Writing a ladder never posts a chat card.
+
 All mutating calls are GM-only and fail with a notification for other users.
 
 `addSuccess()` and `setCounts()` still work as deprecated aliases for
@@ -145,24 +237,53 @@ One world setting (`tracks`) holds an array of:
 
 ```json
 {
-  "schema": 3,
+  "schema": 4,
   "id": "unique-track-id",
   "active": true,
   "title": "Raise the Alarm",
+  "mode": "progress",
   "type": "negative",
   "current": 2,
   "target": 5,
+  "start": 0,
+  "min": 0,
+  "max": 12,
+  "thresholds": [],
+  "band": null,
+  "announceThresholds": true,
+  "revealLadder": false,
   "visibleToPlayers": true,
+  "postToChat": true,
   "status": "running",
   "lastChange": { "delta": 1, "time": 1755400000000 },
   "legacy": null
 }
 ```
 
-`status` is derived, never authored: `complete` when `current >= target`,
-otherwise `running`. `legacy` holds the pre-schema-3 failure fields of a migrated
-track, and is never read at runtime.
+`mode` decides which fields mean anything. A `progress` track reads `target` and
+ignores `start`/`min`/`max`/`thresholds`; a `threshold` track does the reverse.
+The unused fields are kept rather than stripped, so switching a track between
+modes and back does not throw away a ladder the GM wrote.
 
+Each entry in `thresholds` is
+`{ "id": "...", "value": 3, "label": "Strained", "description": "...", "announce": true }`.
+The array is sorted ascending by `value` and deduplicated by it on every read, so
+only one band can ever own a given number.
+
+Two fields are derived and never authored:
+
+- `status` — `complete` when a progress track has `current >= target`, otherwise
+  `running`. A threshold track is always `running`; it has no finish line.
+- `band` — the id of the threshold the value currently sits in, or `null` when it
+  is below every rung. Recomputed on every read so a hand-edited ladder cannot
+  leave it pointing at a rung that no longer exists, but also stored, because
+  announcements compare the band before a change with the band after it.
+
+`legacy` holds the pre-schema-3 failure fields of a migrated track, and is never
+read at runtime.
+
+Upgrading from schema 3 is purely additive: every track gains `mode: "progress"`,
+which is exactly what it already was, and no stored value changes meaning.
 Upgrading from schema 2 migrates `successes → current` and
 `requiredSuccesses → target`, defaults every track to `type: "positive"`, and
 preserves the failure fields under `legacy`. The migration is versioned and
@@ -192,9 +313,12 @@ checks can be done in a single GM session.
    required-successes as the target, all marked *Positive*, with no console
    errors.
 5. Enable **Debug Logging** and reload. The console prints one migration summary
-   line; a second reload prints "already at schema 3 — nothing to do."
+   line; a second reload prints "already at schema 4 — nothing to do."
 6. Hand-edit a track's stored data to remove `target`, or set it to `null`. It
    reloads with a safe default instead of throwing.
+6a. With schema 3 data present, load the world as GM. Every track appears exactly
+    as before, now in **Progress** mode, with its value, target and polarity
+    unchanged and no console errors.
 
 **Progress rules**
 
@@ -233,23 +357,58 @@ checks can be done in a single GM session.
 21. Turn on **Reduce Motion** in the OS. Nothing animates; every state is still
     readable.
 
+**Threshold tracks**
+
+22. Create a threshold track with Start 6, Min 0, Max 12 and the five bands from
+    the table above. The HUD shows the value, the band *Uneasy Truce*, and a
+    ladder with five ticks.
+23. Press `+` three times. At 9 the band becomes *Trusted* and one chat card is
+    posted naming it and quoting its description.
+24. Press `-` once, to 8. The band returns to *Uneasy Truce* and a card announces
+    the fall. Press `-` again, to 7. No card: the band did not change.
+25. Set the value to 12 from 0 in one step. One card is posted, naming *Sworn
+    Allies* and listing *Strained*, *Uneasy Truce* and *Trusted* as passed
+    through — but only if that band's **Announce This Band** is on; with it off
+    (as in the API example) no card appears.
+26. Press `-` at the Minimum and `+` at the Maximum. The value does not move and
+    a notification explains which bound was hit.
+27. Set Min to -5 and press `-` past 0. The value goes negative, the band reads
+    *Below the first threshold*, and the ladder marker sits left of every tick.
+28. Turn **Announce Band Changes** off and cross a band. No card. Turn
+    **Announce in Chat** off as well and adjust the value: still no card. Turn
+    band announcements back on and cross a band: exactly one card.
+29. Turn the world setting **Post Progress to Chat** off. No card is posted for
+    either kind of change, on any track.
+30. Open **Edit Thresholds**, add a rung with the same value as an existing one,
+    and save. One is dropped with a notification explaining why; the ladder stays
+    sorted. Rewriting the ladder posts no chat card.
+31. Click **Reset to Start**. The confirmation names the starting value, and the
+    track returns to it.
+32. With **Show Players Every Threshold** off, log in as a player. The band name,
+    its description and the tick positions are visible; the other bands' numbers
+    are not. Turn the setting on: the numbers appear.
+33. Switch a threshold track to **Progress** mode and back. The ladder is still
+    there, and no chat card was posted for either switch.
+34. Collapse the HUD. The threshold chip shows the value and band name, with no
+    `/ target`.
+
 **Terminology**
 
-22. Search the HUD, panel, dialogs, chat cards and settings for the word
+35. Search the HUD, panel, dialogs, chat cards and settings for the word
     "successes". It should not appear.
 
 **Permissions and sync**
 
-23. As a player, try the API: `game.modules.get("victory-counter").api
+36. As a player, try the API: `game.modules.get("victory-counter").api
     .increase(id)`. It is refused with a GM-only notification.
-24. With a GM and a player connected, change a track on the GM screen. The
+37. With a GM and a player connected, change a track on the GM screen. The
     player's HUD updates immediately without a reload.
-25. Hide a track from players. It disappears from the player HUD, and its chat
-    cards are whispered.
+38. Hide a track from players. It disappears from the player HUD, and its chat
+    cards are whispered — including band-change cards.
 
 **Systems**
 
-26. Load the same world under a different game system (or a second world running
+39. Load the same world under a different game system (or a second world running
     one). The HUD, panel, chat cards and settings all behave identically and the
     console stays clean.
 

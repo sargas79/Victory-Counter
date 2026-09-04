@@ -27,6 +27,7 @@ import {
   MODULE_ID,
   SCHEMA_VERSION,
   SETTINGS,
+  TRACK_MODES,
   TRACK_TYPES,
   log,
   logError
@@ -239,7 +240,10 @@ export function migrateTrackData(raw) {
   const version = Number.isFinite(stored) ? stored : 0;
   const migrated = { ...raw };
 
-  if (version < SCHEMA_VERSION) {
+  // Bounded at 3 rather than at SCHEMA_VERSION: this block reinterprets v2
+  // fields, and running it against a record that is already v3 or better would
+  // re-derive values that are correct as stored.
+  if (version < 3) {
     // --- v0/v1/v2 -> v3 ---------------------------------------------------
     // The success pair becomes the only pair. Failure data is not representable
     // in the new model, so it is preserved verbatim under `legacy` rather than
@@ -251,6 +255,19 @@ export function migrateTrackData(raw) {
     // A pre-3.0 "lost" status has no equivalent; recompute from the counts.
     delete migrated.status;
   }
+
+  // --- v3 -> v4 -----------------------------------------------------------
+  // Purely additive. Every pre-4 track counted toward a target, which is exactly
+  // what progress mode is, so the migration is a single default and no stored
+  // value changes meaning. The remaining v4 fields (start, min, max, thresholds,
+  // band) are backfilled from DEFAULT_TRACK during sanitization.
+  //
+  // Applied at every version, like polarity below: a hand-edited or partially
+  // written record must still land on a mode the rest of the module recognises,
+  // and an unknown value here would otherwise decide how `current` is bounded.
+  migrated.mode = Object.values(TRACK_MODES).includes(raw.mode)
+    ? raw.mode
+    : TRACK_MODES.PROGRESS;
 
   // Polarity: honour an explicitly stored value, otherwise default to positive.
   // Applied at every version so a hand-edited or partially written record still

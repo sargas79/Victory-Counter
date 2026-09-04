@@ -4,6 +4,10 @@ Thumbs.db
 *.swp
 .idea/
 .vscode/
+.obsidian/
+
+# Knowledge-graph tooling output, regenerated on demand
+graphify-out/
 
 # Build output
 node_modules/

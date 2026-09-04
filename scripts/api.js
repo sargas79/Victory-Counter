@@ -6,7 +6,14 @@
  * @module victory-counter/api
  */
 
-import { MODULE_ID, TRACK_TYPES, logError, warn } from "./constants.js";
+import {
+  MODULE_ID,
+  TRACK_MODES,
+  TRACK_TYPES,
+  logError,
+  resolveBand,
+  warn
+} from "./constants.js";
 import {
   adjustTrack,
   createTrack,
@@ -17,7 +24,9 @@ import {
   removeTrack,
   resetTrackProgress,
   setTrackCurrent,
+  setTrackThresholds,
   setTrackType,
+  toggleThresholdAnnounce,
   toggleTrackAnnounce,
   toggleTrackVisibility,
   undo,
@@ -80,6 +89,9 @@ function deprecate(oldName, newName) {
  * @property {(id: string) => Promise<object[]|null>}                end
  * @property {(id: string) => Promise<object|null>}                  toggleVisibility
  * @property {(id: string) => Promise<object|null>}                  toggleAnnounce
+ * @property {(id: string, thresholds: object[]) => Promise<object|null>} setThresholds
+ * @property {(id: string) => object|null}                           getBand
+ * @property {(id: string) => Promise<object|null>}                  toggleThresholdAnnounce
  * @property {(id: string, direction: -1|1) => Promise<object[]|null>} move
  * @property {() => Promise<object[]|null>}                          undo
  * @property {() => boolean}                                         canUndo
@@ -92,6 +104,9 @@ function deprecate(oldName, newName) {
 export const api = {
   /** Polarity values, for macros that want to avoid magic strings. */
   TYPES: { ...TRACK_TYPES },
+
+  /** Track modes, for the same reason. */
+  MODES: { ...TRACK_MODES },
 
   /** All tracks (sanitized copies), in display order. */
   getTracks: () => getTracks(),
@@ -137,6 +152,41 @@ export const api = {
    * and effective from the next progress change onwards.
    */
   toggleAnnounce: (id) => toggleTrackAnnounce(id),
+
+  /* ------------------------------------------ */
+  /*  Threshold tracks                          */
+  /* ------------------------------------------ */
+
+  /**
+   * Replace a threshold track's ladder.
+   *
+   * Rungs are `{value, label, description, announce}`; ids are generated for
+   * any rung that arrives without one. The list is sorted, deduplicated by
+   * value and capped on the way in, so a macro may pass rungs in any order.
+   *
+   * Writing a ladder never posts a chat card — see `setTrackThresholds`.
+   *
+   * @param {string} id
+   * @param {object[]} thresholds
+   */
+  setThresholds: (id, thresholds) => setTrackThresholds(id, thresholds),
+
+  /**
+   * The band a threshold track currently sits in, or null when it is below
+   * every rung (or is not a threshold track at all).
+   * @param {string} id
+   * @returns {object|null}
+   */
+  getBand: (id) => {
+    const track = getTrack(id);
+    if (track?.mode !== TRACK_MODES.THRESHOLD) return null;
+    return resolveBand(track.current, track.thresholds);
+  },
+
+  /** Flip whether a threshold track announces band changes in chat. */
+  toggleThresholdAnnounce: (id) => toggleThresholdAnnounce(id),
+
+  /* ------------------------------------------ */
 
   /** Reorder a track up (-1) or down (1). */
   move: (id, direction) => moveTrack(id, direction),

@@ -4,16 +4,26 @@
 
       The track list is a CSS Grid (`auto-fill` + `minmax`), so widening the
       window turns one column of cards into two or three instead of growing a
-      taller scroll area. --}}
+      taller scroll area.
+
+      Mode-specific fields are shown or hidden purely by the `data-mode`
+      attribute on the enclosing `[data-mode-scope]`, which the mode select
+      rewrites on change. The scope sits on the fieldset / track card rather
+      than on an inner wrapper so that it encloses the select as well as the
+      fields it governs — `#bindModeSwitches` finds it with `closest()`, which
+      only walks ancestors.
+
+      Hidden fields stay in the DOM on purpose: the form readers still find
+      them, so switching mode twice never loses what was typed in between. --}}
 
 <div class="pvc-panel-body">
 
-<fieldset class="pvc-panel-config">
+<fieldset class="pvc-panel-config" data-mode-scope data-mode="progress">
   <legend>{{localize "PVC.Panel.AddTrackLegend"}}</legend>
 
   {{#if atMax}}
   <p class="notes"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
-    {{localize "PVC.Panel.MaxTracksReached"}}</p>
+    {{localize "PVC.Panel.MaxTracksReached" max=limits.MAX_TRACKS}}</p>
   {{else}}
 
   <div class="pvc-field-row">
@@ -26,6 +36,22 @@
       </div>
     </div>
 
+    <div class="form-group pvc-field-narrow">
+      <label for="pvc-new-mode">{{localize "PVC.Panel.Mode"}}</label>
+      <div class="form-fields">
+        <select id="pvc-new-mode" name="new-mode" data-mode-select
+                data-tooltip="{{localize 'PVC.Panel.ModeHint'}}">
+          {{#each modes}}
+          <option value="{{value}}">{{label}}</option>
+          {{/each}}
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <p class="hint">{{localize "PVC.Panel.TrackNameHint"}}</p>
+
+  <div class="pvc-field-row" data-mode-group="progress">
     <div class="form-group pvc-field-narrow">
       <label for="pvc-new-target">{{localize "PVC.Panel.Target"}}</label>
       <div class="form-fields">
@@ -48,7 +74,49 @@
     </div>
   </div>
 
-  <p class="hint">{{localize "PVC.Panel.TrackNameHint"}}</p>
+  <div data-mode-group="threshold">
+    <div class="pvc-field-row">
+      <div class="form-group pvc-field-narrow">
+        <label for="pvc-new-start">{{localize "PVC.Panel.Start"}}</label>
+        <div class="form-fields">
+          <input type="number" id="pvc-new-start" name="new-start"
+                 value="{{defaults.start}}"
+                 min="{{limits.MIN_VALUE}}" max="{{limits.MAX_VALUE}}" step="1"
+                 data-tooltip="{{localize 'PVC.Panel.StartHint'}}">
+        </div>
+      </div>
+
+      <div class="form-group pvc-field-narrow">
+        <label for="pvc-new-min">{{localize "PVC.Panel.Min"}}</label>
+        <div class="form-fields">
+          <input type="number" id="pvc-new-min" name="new-min"
+                 value="{{defaults.min}}"
+                 min="{{limits.MIN_VALUE}}" max="{{limits.MAX_VALUE}}" step="1"
+                 data-tooltip="{{localize 'PVC.Panel.MinHint'}}">
+        </div>
+      </div>
+
+      <div class="form-group pvc-field-narrow">
+        <label for="pvc-new-max">{{localize "PVC.Panel.Max"}}</label>
+        <div class="form-fields">
+          <input type="number" id="pvc-new-max" name="new-max"
+                 value="{{defaults.max}}"
+                 min="{{limits.MIN_VALUE}}" max="{{limits.MAX_VALUE}}" step="1"
+                 data-tooltip="{{localize 'PVC.Panel.MaxHint'}}">
+        </div>
+      </div>
+    </div>
+
+    <p class="hint">{{localize "PVC.Panel.ThresholdCreateHint"}}</p>
+
+    <div class="form-group">
+      <label for="pvc-new-reveal">{{localize "PVC.Panel.RevealLadder"}}</label>
+      <div class="form-fields">
+        <input type="checkbox" id="pvc-new-reveal" name="new-revealLadder">
+      </div>
+      <p class="hint">{{localize "PVC.Panel.RevealLadderHint"}}</p>
+    </div>
+  </div>
 
   <div class="form-group">
     <label for="pvc-new-visible">{{localize "PVC.Panel.VisibleToPlayers"}}</label>
@@ -76,15 +144,31 @@
 
   <div class="pvc-track-grid">
   {{#each tracks}}
-  <div class="pvc-track-card{{#if negative}} pvc-negative{{/if}}{{#if complete}} pvc-resolved{{/if}}"
-       data-id="{{id}}">
+  {{!-- Polarity and completion styling apply to progress tracks only. `type`
+        survives a switch to threshold mode, so a track that used to be Negative
+        would otherwise keep its red numerals while its band tone says the
+        opposite; and a threshold track never completes. --}}
+  <div class="pvc-track-card{{#if threshold}} pvc-threshold pvc-tone-{{tone}}{{else}}{{#if negative}} pvc-negative{{/if}}{{#if complete}} pvc-resolved{{/if}}{{/if}}"
+       data-id="{{id}}" data-mode-scope data-mode="{{mode}}">
 
     <div class="pvc-panel-status-line">
+      {{#if threshold}}
+      {{!-- `bandDescription` is empty both for an undescribed rung and for a
+            value sitting below the whole ladder, so it falls back to the tone
+            rather than opening an empty tooltip panel. --}}
+      <span class="pvc-band-badge pvc-tone-{{tone}}"
+            data-tooltip="{{#if bandDescription}}{{bandDescription}}{{else}}{{toneLabel}}{{/if}}">
+        <i class="fa-solid {{#if (eq tone 'positive')}}fa-arrow-up{{else if (eq tone 'negative')}}fa-arrow-down{{else}}fa-equals{{/if}}"
+           aria-hidden="true"></i>
+        {{bandLabel}}
+      </span>
+      {{else}}
       <span class="pvc-badge pvc-badge-{{status}}">{{statusLabel}}</span>
       <span class="pvc-type-badge" data-tooltip="{{typeTooltip}}">
         <i class="fa-solid {{#if negative}}fa-arrow-down{{else}}fa-arrow-up{{/if}}" aria-hidden="true"></i>
         {{typeLabel}}
       </span>
+      {{/if}}
       {{#unless visibleToPlayers}}
       <i class="fa-solid fa-eye-slash" data-tooltip="{{localize 'PVC.Panel.HiddenNotice'}}"
          aria-label="{{localize 'PVC.Panel.HiddenNotice'}}"></i>
@@ -103,7 +187,9 @@
       </div>
     </div>
 
-    {{#if ../rings}}
+    {{#if threshold}}
+    {{> "modules/victory-counter/templates/threshold-ladder.hbs"}}
+    {{else if ../rings}}
     <div class="pvc-ring-wrap pvc-ring-compact">
       {{> "modules/victory-counter/templates/progress-ring.hbs" ring=../ring}}
     </div>
@@ -118,7 +204,19 @@
       </div>
     </div>
 
-    <div class="pvc-field-row">
+    <div class="form-group pvc-field-narrow">
+      <label for="pvc-mode-{{id}}">{{localize "PVC.Panel.Mode"}}</label>
+      <div class="form-fields">
+        <select id="pvc-mode-{{id}}" name="mode-{{id}}" data-mode-select
+                data-tooltip="{{localize 'PVC.Panel.ModeHint'}}">
+          {{#each ../modes}}
+          <option value="{{value}}" {{#if (eq value ../mode)}}selected{{/if}}>{{label}}</option>
+          {{/each}}
+        </select>
+      </div>
+    </div>
+
+    <div class="pvc-field-row" data-mode-group="progress">
       <div class="form-group pvc-field-narrow">
         <label for="pvc-target-{{id}}">{{localize "PVC.Panel.Target"}}</label>
         <div class="form-fields">
@@ -140,6 +238,76 @@
         </div>
       </div>
     </div>
+
+    <div data-mode-group="threshold">
+      <div class="pvc-field-row">
+        <div class="form-group pvc-field-narrow">
+          <label for="pvc-start-{{id}}">{{localize "PVC.Panel.Start"}}</label>
+          <div class="form-fields">
+            <input type="number" id="pvc-start-{{id}}" name="start-{{id}}" value="{{start}}"
+                   min="{{../limits.MIN_VALUE}}" max="{{../limits.MAX_VALUE}}" step="1"
+                   data-tooltip="{{localize 'PVC.Panel.StartHint'}}">
+          </div>
+        </div>
+
+        <div class="form-group pvc-field-narrow">
+          <label for="pvc-min-{{id}}">{{localize "PVC.Panel.Min"}}</label>
+          <div class="form-fields">
+            <input type="number" id="pvc-min-{{id}}" name="min-{{id}}" value="{{min}}"
+                   min="{{../limits.MIN_VALUE}}" max="{{../limits.MAX_VALUE}}" step="1"
+                   data-tooltip="{{localize 'PVC.Panel.MinHint'}}">
+          </div>
+        </div>
+
+        <div class="form-group pvc-field-narrow">
+          <label for="pvc-max-{{id}}">{{localize "PVC.Panel.Max"}}</label>
+          <div class="form-fields">
+            <input type="number" id="pvc-max-{{id}}" name="max-{{id}}" value="{{max}}"
+                   min="{{../limits.MIN_VALUE}}" max="{{../limits.MAX_VALUE}}" step="1"
+                   data-tooltip="{{localize 'PVC.Panel.MaxHint'}}">
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="pvc-reveal-{{id}}">{{localize "PVC.Panel.RevealLadder"}}</label>
+        <div class="form-fields">
+          <input type="checkbox" id="pvc-reveal-{{id}}" name="revealLadder-{{id}}"
+                 {{checked revealLadder}}
+                 data-tooltip="{{localize 'PVC.Panel.RevealLadderHint'}}">
+        </div>
+      </div>
+
+      <div class="pvc-ladder-summary">
+        <span class="notes">
+          {{#if thresholdCount}}
+          {{localize "PVC.Panel.LadderSummary" count=thresholdCount}}
+          {{else}}
+          {{localize "PVC.Panel.LadderEmpty"}}
+          {{/if}}
+        </span>
+        <button type="button" data-action="editThresholds" data-id="{{id}}"
+                data-tooltip="{{localize 'PVC.Panel.EditThresholdsHint'}}">
+          <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
+          {{localize "PVC.Panel.EditThresholds"}}
+        </button>
+      </div>
+
+      <div class="form-group">
+        <label for="pvc-band-announce-{{id}}">{{localize "PVC.Panel.AnnounceBands"}}</label>
+        <div class="form-fields">
+          <button type="button" id="pvc-band-announce-{{id}}"
+                  data-action="toggleThresholdAnnounce" data-id="{{id}}"
+                  data-tooltip="{{localize 'PVC.Panel.AnnounceBandsHint'}}"
+                  aria-pressed="{{#if announcingThresholds}}true{{else}}false{{/if}}">
+            <i class="fa-solid {{#if announcingThresholds}}fa-bell{{else}}fa-bell-slash{{/if}}"
+               aria-hidden="true"></i>
+            {{#if announcingThresholds}}{{localize "PVC.Panel.BandsAnnouncing"}}{{else}}{{localize "PVC.Panel.BandsSilent"}}{{/if}}
+          </button>
+        </div>
+      </div>
+    </div>
+
 
     <div class="form-group">
       <label for="pvc-visible-{{id}}">{{localize "PVC.Panel.VisibleToPlayers"}}</label>
@@ -179,13 +347,13 @@
     </footer>
 
     <div class="pvc-stepper">
-      <span class="pvc-stepper-label">{{localize "PVC.Progress"}}</span>
+      <span class="pvc-stepper-label">{{#if threshold}}{{localize "PVC.Value"}}{{else}}{{localize "PVC.Progress"}}{{/if}}</span>
       <button type="button" data-action="adjustTrack" data-id="{{id}}" data-delta="-1"
               data-tooltip="{{localize 'PVC.Action.DecreaseHint'}}"
               aria-label="{{localize 'PVC.Action.DecreaseHint'}}">
         <i class="fa-solid fa-minus" aria-hidden="true"></i>
       </button>
-      <span class="pvc-stepper-value">{{current}} / {{target}}</span>
+      <span class="pvc-stepper-value">{{#if threshold}}{{current}}{{else}}{{current}} / {{target}}{{/if}}</span>
       <button type="button" data-action="adjustTrack" data-id="{{id}}" data-delta="1"
               data-tooltip="{{localize 'PVC.Action.IncreaseHint'}}"
               aria-label="{{localize 'PVC.Action.IncreaseHint'}}">
@@ -195,7 +363,8 @@
 
     <footer class="pvc-panel-actions">
       <button type="button" data-action="resetProgress" data-id="{{id}}">
-        <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> {{localize "PVC.Panel.ResetProgress"}}
+        <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
+        {{#if threshold}}{{localize "PVC.Panel.ResetToStart"}}{{else}}{{localize "PVC.Panel.ResetProgress"}}{{/if}}
       </button>
       <button type="button" class="pvc-danger" data-action="removeTrack" data-id="{{id}}">
         <i class="fa-solid fa-circle-stop" aria-hidden="true"></i> {{localize "PVC.Panel.End"}}
