@@ -153,7 +153,11 @@
 
     <div class="pvc-panel-status-line">
       {{#if threshold}}
-      <span class="pvc-band-badge pvc-tone-{{tone}}" data-tooltip="{{bandDescription}}">
+      {{!-- `bandDescription` is empty both for an undescribed rung and for a
+            value sitting below the whole ladder, so it falls back to the tone
+            rather than opening an empty tooltip panel. --}}
+      <span class="pvc-band-badge pvc-tone-{{tone}}"
+            data-tooltip="{{#if bandDescription}}{{bandDescription}}{{else}}{{toneLabel}}{{/if}}">
         <i class="fa-solid {{#if (eq tone 'positive')}}fa-arrow-up{{else if (eq tone 'negative')}}fa-arrow-down{{else}}fa-equals{{/if}}"
            aria-hidden="true"></i>
         {{bandLabel}}
