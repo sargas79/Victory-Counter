@@ -5,8 +5,77 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Threshold tracks.** A track now runs in one of two modes. *Progress* is what
+  the module has always done: count up from zero to a target and complete there.
+  *Thresholds* is new: the track starts at a value the GM sets, moves up **and**
+  down between its own minimum and maximum (below zero, if the GM allows it), and
+  never completes. Its meaning comes from the band it lands in rather than from a
+  finish line, which is what makes it fit standing, reputation, morale, alert
+  level and faction disposition — anything that can get better or worse.
+
+  Each threshold track carries up to 12 GM-described bands: a value where the
+  band begins, a name, and a description of what it means. The value sits in the
+  highest band it has reached. Band **tone** is derived from the track's starting
+  value rather than configured — bands below the start read as negative, the band
+  containing it is the status quo, bands above it read as positive — so moving
+  the start re-reads the whole ladder and there is nothing to tag twice.
+- **Band-change announcements.** Crossing into a different band, in either
+  direction, can post a chat card naming the band, quoting its description, and
+  listing any bands skipped over in a single large adjustment. Crossings are
+  detected on the stored band id rather than on the values, so a change that
+  stays inside one band is never announced however large it was, and a jump
+  across three bands is one announcement with a known destination.
+
+  Announcing is gated three ways, independently: the existing world setting
+  **Post Progress to Chat** is still the master switch; the existing per-track
+  **Announce in Chat** covers every value change; and the new per-track
+  **Announce Band Changes**, plus a per-band **Announce This Band**, cover
+  crossings. A change that trips more than one gate posts a single card carrying
+  all of it, not one card per gate. Rewriting a ladder announces nothing — the
+  scale changing is not the same event as the value moving across it.
+- **Threshold ladder editor.** Its own window per track, reached from **Edit
+  Thresholds** on the control panel's track card. Edits are held in a local draft
+  and written only on Save, so adding or removing a row never commits a
+  half-typed ladder, and a mistake is one Cancel away rather than one Undo away.
+  Rungs may be entered in any order; they are sorted, deduplicated by value and
+  capped on save.
+- **Ladder readout on the HUD.** A continuous rail from the track's minimum to
+  its maximum with a tick per band, a marker at the current value and a mark
+  where the track started. Deliberately not segmented: bands are rarely equal in
+  width, and equal segments would misrepresent how far one point moves the
+  needle. Progress rings do not apply to threshold tracks and are skipped for
+  them even when the world setting is on.
+- **Per-track "Show Players Every Threshold".** Off by default: players see their
+  current band, its description and the shape of the scale, but not the other
+  bands' numbers or descriptions. Turning it on makes the whole ladder public.
+- **New API surface:** `MODES`, `setThresholds(id, rungs)`, `getBand(id)` and
+  `toggleThresholdAnnounce(id)`. Existing value calls (`increase`, `decrease`,
+  `adjust`, `setProgress`, `reset`) work unchanged on both modes.
+
 ### Changed
 
+- **Schema 4.** Purely additive over schema 3: every existing track gains
+  `mode: "progress"`, which is exactly what it already was, and no stored value
+  changes meaning. New fields are `mode`, `start`, `min`, `max`, `thresholds`,
+  `band`, `announceThresholds` and `revealLadder`. The migration is versioned and
+  idempotent like its predecessors and still writes a one-time verbatim backup
+  before the first write.
+- **`reset` means "back to the beginning", which is no longer always zero.** A
+  progress track still zeroes; a threshold track returns to its starting value,
+  and the button reads **Reset to Start** with a confirmation that names it.
+- **`current` is no longer floored at zero for every track.** The floor is now
+  mode-aware: zero in progress mode exactly as before, and the track's own
+  `min` in threshold mode, which may be negative. Both are still enforced in
+  `sanitizeTrack`, so every write path continues to funnel through one clamp.
+- **A threshold track is always `running`.** `status` is still derived and never
+  authored, but a mode with no finish line cannot complete — which is what keeps
+  the "reached its target" notification and the completion styling off a track
+  that merely climbed to its top band.
+- **The bands ladder is kept when a track is switched to progress mode.** The
+  unused fields are carried rather than stripped, so flipping mode and back does
+  not throw away a ladder the GM wrote.
 - **"Announce in Chat" is now a live toggle, not a start-time setting.** The
   flag used to be a checkbox set when adding a track and only re-applied along
   with the rest of a card's configuration via "Apply Changes". It is now its own

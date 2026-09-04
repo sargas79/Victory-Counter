@@ -36,8 +36,20 @@
        aria-label="{{localize 'PVC.Overlay.CompactAdjustLabel' progress=progressLabel}}"
        data-tooltip="{{localize 'PVC.Overlay.CompactAdjustHint'}}"
        {{else}}aria-label="{{progressLabel}}"{{/if}}>
-    <span class="pvc-type-mark" data-tooltip="{{typeTooltip}}" aria-hidden="true">
-      {{#if negative}}
+    {{!-- Threshold chips mark their band's tone, not the track's polarity:
+          polarity describes a direction of travel a threshold track does not
+          have, so showing it here would contradict the band beside it. --}}
+    <span class="pvc-type-mark{{#if threshold}} pvc-tone-{{tone}}{{/if}}"
+          data-tooltip="{{#if threshold}}{{toneLabel}}{{else}}{{typeTooltip}}{{/if}}" aria-hidden="true">
+      {{#if threshold}}
+        {{#if (eq tone 'positive')}}
+        <svg viewBox="0 0 256 256" fill="currentColor"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z"/></svg>
+        {{else if (eq tone 'negative')}}
+        <svg viewBox="0 0 256 256" fill="currentColor"><path d="M205.66,149.66l-72,72a8,8,0,0,1-11.32,0l-72-72a8,8,0,0,1,11.32-11.32L120,196.69V40a8,8,0,0,1,16,0V196.69l58.34-58.35a8,8,0,0,1,11.32,11.32Z"/></svg>
+        {{else}}
+        <svg viewBox="0 0 256 256" fill="currentColor"><path d="M216,112H40a8,8,0,0,1,0-16H216a8,8,0,0,1,0,16Zm0,32H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Z"/></svg>
+        {{/if}}
+      {{else if negative}}
       <svg viewBox="0 0 256 256" fill="currentColor"><path d="M205.66,149.66l-72,72a8,8,0,0,1-11.32,0l-72-72a8,8,0,0,1,11.32-11.32L120,196.69V40a8,8,0,0,1,16,0V196.69l58.34-58.35a8,8,0,0,1,11.32,11.32Z"/></svg>
       {{else}}
       <svg viewBox="0 0 256 256" fill="currentColor"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z"/></svg>
@@ -45,10 +57,19 @@
     </span>
     <span class="pvc-compact-title" title="{{displayTitle}}">{{displayTitle}}</span>
     <span class="pvc-compact-value">{{current}}</span>
+    {{#if threshold}}
+    {{!-- No "/ target": a threshold track has no target, so the band it sits in
+          is what the number has to be read against. --}}
+    <span class="pvc-compact-band pvc-tone-{{tone}}" title="{{bandLabel}}">{{bandLabel}}</span>
+    <div class="pvc-track">
+      <div class="pvc-track-fill" style="width: {{ladderPercent}}%"></div>
+    </div>
+    {{else}}
     <span class="pvc-compact-target">/ {{target}}</span>
     <div class="pvc-track">
       <div class="pvc-track-fill" style="width: {{percent}}%"></div>
     </div>
+    {{/if}}
   </div>
   {{/each}}
 </div>
@@ -95,7 +116,7 @@
 
   <div class="pvc-track-grid">
   {{#each tracks}}
-  <article class="pvc-card pvc-{{status}}{{#if negative}} pvc-negative{{/if}}{{#if complete}} pvc-resolved{{/if}}">
+  <article class="pvc-card pvc-{{status}}{{#if threshold}} pvc-threshold pvc-tone-{{tone}}{{else}}{{#if negative}} pvc-negative{{/if}}{{#if complete}} pvc-resolved{{/if}}{{/if}}">
 
     <div class="pvc-card-header">
       <span class="pvc-card-title" title="{{displayTitle}}">{{displayTitle}}</span>
@@ -109,6 +130,42 @@
       </button>
       {{/if}}
     </div>
+
+    {{#if threshold}}
+    {{!-- Band badge: icon + the band's own name, never colour alone. Status is
+          omitted because a threshold track is always running — there is no
+          finish line for it to have reached. --}}
+    <div class="pvc-meta">
+      <span class="pvc-band-badge pvc-tone-{{tone}}"
+            data-tooltip="{{#if bandDescription}}{{bandDescription}}{{else}}{{toneLabel}}{{/if}}">
+        <span class="pvc-type-mark" aria-hidden="true">
+          {{#if (eq tone 'positive')}}
+          <svg viewBox="0 0 256 256" fill="currentColor"><path d="M205.66,117.66a8,8,0,0,1-11.32,0L136,59.31V216a8,8,0,0,1-16,0V59.31L61.66,117.66a8,8,0,0,1-11.32-11.32l72-72a8,8,0,0,1,11.32,0l72,72A8,8,0,0,1,205.66,117.66Z"/></svg>
+          {{else if (eq tone 'negative')}}
+          <svg viewBox="0 0 256 256" fill="currentColor"><path d="M205.66,149.66l-72,72a8,8,0,0,1-11.32,0l-72-72a8,8,0,0,1,11.32-11.32L120,196.69V40a8,8,0,0,1,16,0V196.69l58.34-58.35a8,8,0,0,1,11.32,11.32Z"/></svg>
+          {{else}}
+          <svg viewBox="0 0 256 256" fill="currentColor"><path d="M216,112H40a8,8,0,0,1,0-16H216a8,8,0,0,1,0,16Zm0,32H40a8,8,0,0,0,0,16H216a8,8,0,0,0,0-16Z"/></svg>
+          {{/if}}
+        </span>
+        {{bandLabel}}
+      </span>
+    </div>
+
+    {{!-- ===== Band readout ===== --}}
+    <div class="pvc-readout" aria-label="{{progressLabel}}">
+      <div class="pvc-figure">
+        <span class="pvc-figure-value">{{current}}</span>
+      </div>
+      <span class="pvc-kicker pvc-tone-{{tone}}">{{bandLabel}}</span>
+    </div>
+
+    {{> "modules/victory-counter/templates/threshold-ladder.hbs"}}
+
+    {{#if bandDescription}}
+    <p class="pvc-band-description">{{bandDescription}}</p>
+    {{/if}}
+
+    {{else}}
 
     {{!-- Polarity badge: icon + written label, never colour alone. --}}
     <div class="pvc-meta">
@@ -143,6 +200,8 @@
     <div class="pvc-track">
       <div class="pvc-track-fill" style="width: {{percent}}%"></div>
     </div>
+    {{/if}}
+
     {{/if}}
 
     {{#if ../isGM}}

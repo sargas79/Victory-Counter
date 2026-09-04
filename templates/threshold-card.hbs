@@ -1,0 +1,53 @@
+{{!--
+  Chat summary posted when a threshold track's value or band changes.
+
+  Distinct from chat-card.hbs because a threshold track has no target to read
+  against: the headline is the value plus the band it now sits in, and the
+  band's description is the part the table actually cares about.
+
+  Tone (`pvc-tone-positive` / `-neutral` / `-negative`) is derived from where the
+  band sits relative to the track's starting value, and is never the only signal:
+  the crossing line spells out the direction in words and in an arrow as well.
+--}}
+<div class="pvc-chat-card pvc-threshold-card pvc-tone-{{tone}}">
+  <header class="pvc-chat-header">
+    <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
+    <span>{{#if track.title}}{{track.title}}{{else}}{{localize "PVC.DefaultTitle"}}{{/if}}</span>
+    <span class="pvc-chat-band">{{bandLabel}}</span>
+  </header>
+
+  {{#if reason}}<p class="pvc-chat-reason">{{reason}}</p>{{/if}}
+
+  <p class="pvc-chat-progress">
+    <strong>{{track.current}}</strong>
+    {{#if delta}}<span class="pvc-chat-delta">({{numberFormat delta sign=true}})</span>{{/if}}
+  </p>
+
+  {{#if crossing}}
+  <div class="pvc-chat-crossing">
+    <p class="pvc-crossing-line">
+      <i class="fa-solid {{#if crossing.rising}}fa-arrow-up{{else}}fa-arrow-down{{/if}}"
+         aria-hidden="true"></i>
+      {{#if crossing.rising}}
+      {{localize "PVC.Threshold.Rose"}}
+      {{else}}
+      {{localize "PVC.Threshold.Fell"}}
+      {{/if}}
+      <span class="pvc-crossing-from">{{crossing.leftLabel}}</span>
+      <span class="pvc-crossing-arrow" aria-hidden="true">&rarr;</span>
+      <span class="pvc-crossing-to">{{bandLabel}}</span>
+    </p>
+
+    {{#if crossing.passed.length}}
+    <p class="pvc-crossing-passed">
+      {{localize "PVC.Threshold.PassedThrough"}}
+      {{#each crossing.passed}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+    </p>
+    {{/if}}
+  </div>
+  {{/if}}
+
+  {{#if bandDescription}}
+  <p class="pvc-chat-band-description">{{bandDescription}}</p>
+  {{/if}}
+</div>
