@@ -419,7 +419,14 @@ export async function createTrack(config) {
     return null;
   }
 
-  const requested = {
+  // Sanitized in two passes. The opening value depends on `mode` and `start`,
+  // and a caller may supply neither — reading them straight off the config would
+  // mean deriving `current` from an `undefined` start, which lands the track on
+  // its minimum rather than on its (defaulted) starting point. The first pass
+  // settles mode, bounds and start; the second opens the track at the value
+  // those imply, so `band` and `status` are derived from what is actually
+  // stored.
+  const normalized = sanitizeTrack({
     schema: SCHEMA_VERSION,
     mode: TRACK_MODES.PROGRESS,
     type: TRACK_TYPES.POSITIVE,
@@ -427,14 +434,15 @@ export async function createTrack(config) {
     id: generateId(),
     active: true,
     lastChange: { delta: 0, time: 0 }
-  };
-  // A progress track always opens empty. A threshold track opens wherever the
-  // GM said it starts, which is the status quo the bands are measured against —
-  // opening it at zero would put it in the wrong band before play begins.
-  requested.current =
-    requested.mode === TRACK_MODES.THRESHOLD ? requested.start : 0;
+  });
 
-  const track = sanitizeTrack(requested);
+  const track = sanitizeTrack({
+    ...normalized,
+    // A progress track always opens empty. A threshold track opens wherever the
+    // GM said it starts, which is the status quo its bands are measured against
+    // — opening it at zero would put it in the wrong band before play begins.
+    current: normalized.mode === TRACK_MODES.THRESHOLD ? normalized.start : 0
+  });
 
   const result = await persistTracks([...current, track], {
     announceTrack: track,
