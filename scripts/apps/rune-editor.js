@@ -22,7 +22,7 @@
 
 import { LIMITS, MODULE_ID } from "../constants.js";
 import { getTrack, setTrackRunes } from "../state.js";
-import { runeSeatOutline, usesRuneCircle } from "../rune-view.js";
+import { runeSeatCount, runeSeatOutline, usesRuneCircle } from "../rune-view.js";
 import { clampToMinimum, refitToViewport } from "./window-fit.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -114,6 +114,8 @@ export class RuneEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       };
     });
 
+    const seatTotal = runeSeatCount(track);
+
     return {
       missing: false,
       track,
@@ -122,7 +124,15 @@ export class RuneEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       empty: rows.length === 0,
       // A track whose circle cannot currently be seated can still be edited —
       // the GM may be about to fix the target — but it is worth saying so.
-      drawn: usesRuneCircle(track)
+      drawn: usesRuneCircle(track),
+      // ...and when the reason it cannot be seated is that there are too many,
+      // the list below is only the seats a circle could ever hold. Saying which
+      // is the difference between a short list and a list that lost rows.
+      // Compared here rather than in the template, which stays free of
+      // arithmetic for the same reason the circle's geometry is computed in JS.
+      truncated: seatTotal > rows.length,
+      shown: rows.length,
+      seatTotal
     };
   }
 

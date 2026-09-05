@@ -207,6 +207,7 @@
   "PVC.Circle.SeatsLegend": "The circle",
   "PVC.Circle.EditorHint": "Each seat shows the glyph and name it uses by default. Type over either to replace it, or clear the field to go back to the default.",
   "PVC.Circle.NotDrawnNotice": "This track is not currently drawn as a circle, so nothing you set here will be visible yet. It is still saved.",
+  "PVC.Circle.TruncatedNotice": "Showing the first {shown} of {total} seats — the most a circle can hold.",
   "PVC.Circle.RunesLegend": "Seats",
   "PVC.Circle.Glyph": "Glyph",
   "PVC.Circle.GlyphHint": "One character. Paste any symbol your players' browsers can render.",

@@ -29,6 +29,12 @@
   {{#unless drawn}}
   <p class="notes"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
     {{localize "PVC.Circle.NotDrawnNotice"}}</p>
+  {{#if truncated}}
+  {{!-- The track wants more seats than a circle can hold, so the list below is
+        the ones it could. Without this the GM counts 24 rows against a target
+        of 60 and reasonably concludes the editor dropped some. --}}
+  <p class="notes">{{localize "PVC.Circle.TruncatedNotice" shown=shown total=seatTotal}}</p>
+  {{/if}}
   {{/unless}}
 </fieldset>
 
@@ -53,7 +59,7 @@
           <div class="form-fields">
             <input type="text" id="pvc-rune-glyph-{{key}}" data-field="glyph"
                    value="{{glyph}}" placeholder="{{defaultGlyph}}"
-                   maxlength="{{../limits.MAX_RUNE_GLYPH}}"
+                   maxlength="{{../limits.RUNE_GLYPH_INPUT_MAXLENGTH}}"
                    data-tooltip="{{localize 'PVC.Circle.GlyphHint'}}">
           </div>
         </div>

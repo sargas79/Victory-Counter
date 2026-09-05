@@ -153,7 +153,8 @@ export function sanitizeRune(raw) {
     // Sliced by code point rather than by `String.slice`, which counts UTF-16
     // units: most of the symbols a GM is likely to paste in are surrogate pairs,
     // and cutting one in half stores half a character that renders as a
-    // replacement mark on every screen.
+    // replacement mark on every screen. This is the only limit that binds — the
+    // editor's `maxlength` counts a different unit and cannot be the authority.
     glyph: [...String(source.glyph ?? "").trim()].slice(0, LIMITS.MAX_RUNE_GLYPH).join(""),
     label: String(source.label ?? "").trim().slice(0, LIMITS.MAX_THRESHOLD_LABEL)
   };

@@ -188,11 +188,22 @@ export const LIMITS = Object.freeze({
   MIN_RUNE_EDITOR_WIDTH: 360,
   MIN_RUNE_EDITOR_HEIGHT: 260,
   /**
-   * A rune override is a glyph, not a word. Two characters is enough for a
-   * surrogate pair — most of the symbols a GM is likely to paste in live above
-   * the basic plane — and short enough that the seat stays a seat.
+   * A seat holds one rune, so a rune override is exactly one glyph — counted in
+   * **code points**, which is what "one character" means to the GM typing it.
    */
-  MAX_RUNE_GLYPH: 2
+  MAX_RUNE_GLYPH: 1,
+  /**
+   * The same limit expressed in UTF-16 code units, because that is the only unit
+   * an `<input maxlength>` can count in.
+   *
+   * The two numbers differ on purpose. Most of the symbols a GM is likely to
+   * paste in live above the basic plane and so arrive as a surrogate pair: an
+   * input capped at 1 would refuse them outright. Capping the field at 2 lets
+   * one astral character through and {@link LIMITS.MAX_RUNE_GLYPH} does the
+   * real enforcement, which is where it belongs — the API can be called
+   * directly, so the field was never the authority to begin with.
+   */
+  RUNE_GLYPH_INPUT_MAXLENGTH: 2
 });
 
 /**

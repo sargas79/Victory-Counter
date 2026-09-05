@@ -448,8 +448,13 @@ checks can be done in a single GM session.
 22. Set a progress track's target to 60. The card falls back to its standard
     readout and the panel explains why. Lower it to 8: the circle comes back
     without the display having to be re-picked.
+22a. With that target still at 60, open **Runes**. It opens, says the circle is
+     not currently drawn, and says it is showing the first 24 seats of 60. Set a
+     glyph on seat 3 and save; lower the target to 8 and confirm the circle comes
+     back carrying it.
 23. Give a threshold track Display **Rune circle** before writing any rungs. The
-    card falls back and the **Runes** button is disabled.
+    card falls back and the **Runes** button is disabled — there are no seats to
+    name yet.
 24. Turn **Show Players Every Threshold** off and log in as a player. Seated
     runes name themselves in a tooltip; unearned ones read "Not yet revealed".
 

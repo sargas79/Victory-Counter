@@ -271,8 +271,14 @@
         <span class="notes">
           {{#if seatCount}}{{localize "PVC.Circle.SeatSummary" count=seatCount}}{{/if}}
         </span>
+        {{!-- Gated on there being a seat to edit, not on the circle being drawn.
+              A track that has fallen back to its standard readout still has
+              seats the GM may want to name before fixing the target, and the
+              editor is built for exactly that — it says so on opening. With no
+              seats at all there is nothing to show, and the notice above has
+              already explained why. --}}
         <button type="button" data-action="editRunes" data-id="{{id}}"
-                {{disabled (not circle)}}
+                {{disabled (not seatCount)}}
                 data-tooltip="{{localize 'PVC.Circle.EditRunesHint'}}">
           <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
           {{localize "PVC.Circle.EditRunes"}}
