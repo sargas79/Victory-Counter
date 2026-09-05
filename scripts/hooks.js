@@ -26,6 +26,7 @@
 import { MODULE_ID, STATUS, log, logError, warn } from "./constants.js";
 import { exposeApi } from "./api.js";
 import { getTracks, sanitizeTracks } from "./state.js";
+import { trackDisplayName } from "./track-view.js";
 import { registerSettings } from "./settings.js";
 import { importLegacyModuleData, runMigration } from "./migration.js";
 
@@ -126,7 +127,7 @@ export async function refreshUI({ announce = true } = {}) {
       ) {
         ui.notifications.info(
           game.i18n.format("PVC.Notify.Complete", {
-            title: track.title || game.i18n.localize("PVC.DefaultTitle")
+            title: trackDisplayName(track)
           })
         );
       }

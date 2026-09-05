@@ -23,12 +23,8 @@ import {
   OVERLAY_POSITIONS,
   RING,
   SETTINGS,
-  STATUS,
-  TRACK_TYPES,
   clampInt,
-  log,
-  progressPercent,
-  ringDashOffset
+  log
 } from "../constants.js";
 import {
   adjustTrack,
@@ -40,6 +36,7 @@ import {
   toggleTrackVisibility,
   undo
 } from "../state.js";
+import { trackCardBase } from "../track-view.js";
 import { buildThresholdView } from "../threshold-view.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -80,27 +77,8 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
     const rings = ringsEnabled();
 
     const tracks = getVisibleTracks().map((track) => {
-      const percent = progressPercent(track.current, track.target);
-      const negative = track.type === TRACK_TYPES.NEGATIVE;
-
       const base = {
-        ...track,
-        displayTitle: track.title || game.i18n.localize("PVC.DefaultTitle"),
-        percent: Math.round(percent),
-        ringOffset: ringDashOffset(percent),
-        negative,
-        typeLabel: game.i18n.localize(negative ? "PVC.Type.Negative" : "PVC.Type.Positive"),
-        typeTooltip: game.i18n.localize(
-          negative ? "PVC.Type.NegativeHint" : "PVC.Type.PositiveHint"
-        ),
-        progressLabel: game.i18n.format("PVC.Aria.Progress", {
-          title: track.title || game.i18n.localize("PVC.DefaultTitle"),
-          type: game.i18n.localize(negative ? "PVC.Type.Negative" : "PVC.Type.Positive"),
-          current: track.current,
-          target: track.target
-        }),
-        complete: track.status === STATUS.COMPLETE,
-        statusLabel: game.i18n.localize(`PVC.Status.${track.status}`),
+        ...trackCardBase(track),
         lastChange: this.#formatLastChange(track)
       };
 
