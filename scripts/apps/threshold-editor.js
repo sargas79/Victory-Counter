@@ -17,6 +17,7 @@
 
 import { LIMITS, MODULE_ID, bandTone, generateId } from "../constants.js";
 import { getTrack, sanitizeThresholds, setTrackThresholds } from "../state.js";
+import { trackDisplayName } from "../track-view.js";
 import { clampToMinimum, refitToViewport } from "./window-fit.js";
 
 const { ApplicationV2, DialogV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -85,7 +86,7 @@ export class ThresholdEditor extends HandlebarsApplicationMixin(ApplicationV2) {
   get title() {
     const track = getTrack(this.trackId);
     return game.i18n.format("PVC.Threshold.EditorTitleFor", {
-      title: track?.title || game.i18n.localize("PVC.DefaultTitle")
+      title: trackDisplayName(track)
     });
   }
 

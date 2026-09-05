@@ -38,7 +38,7 @@ import {
   undo,
   updateTrackConfig
 } from "../state.js";
-import { trackCardBase } from "../track-view.js";
+import { trackCardBase, trackDisplayName } from "../track-view.js";
 import { buildThresholdView } from "../threshold-view.js";
 import { clampToMinimum, refitToViewport } from "./window-fit.js";
 
@@ -352,7 +352,7 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
     const proceed = await DialogV2.confirm({
       window: { title: game.i18n.localize("PVC.Confirm.EndTitle") },
       content: `<p>${game.i18n.format("PVC.Confirm.EndContent", {
-        title: current?.title || game.i18n.localize("PVC.DefaultTitle")
+        title: trackDisplayName(current)
       })}</p><p class="notes">${game.i18n.localize("PVC.Confirm.EndNote")}</p>`,
       rejectClose: false,
       modal: true

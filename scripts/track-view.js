@@ -25,14 +25,21 @@ import { STATUS, TRACK_TYPES, progressPercent, ringDashOffset } from "./constant
 /**
  * A track's display name, falling back to the localized default.
  *
- * A track the GM never titled still has to call itself something, in the card
- * and in the screen-reader label alike — and both have to agree on what.
+ * A track the GM never titled still has to call itself something — on its card,
+ * in its screen-reader label, in the chat card announcing it, in the
+ * notification when it completes and in the dialog asking whether to delete it.
+ * All of those have to agree on what, which is why this is the only place the
+ * fallback is chosen.
  *
- * @param {object} track A sanitized track.
+ * Tolerates a missing track: several callers look one up by id and name it in
+ * the same breath — a confirmation dialog for a track that has just been
+ * removed on another client should read "Progress Track", not throw.
+ *
+ * @param {object} [track] A sanitized track, or nothing.
  * @returns {string}
  */
 export function trackDisplayName(track) {
-  return track.title || game.i18n.localize("PVC.DefaultTitle");
+  return track?.title || game.i18n.localize("PVC.DefaultTitle");
 }
 
 /**

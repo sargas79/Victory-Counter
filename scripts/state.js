@@ -35,6 +35,7 @@ import {
 } from "./constants.js";
 import { migrateTrackData } from "./migration.js";
 import { bandDisplayName } from "./threshold-view.js";
+import { trackDisplayName } from "./track-view.js";
 
 /**
  * @typedef {object} Threshold
@@ -363,12 +364,12 @@ function assertGM() {
 
 /**
  * A track's display name, for notifications and confirmations.
- * @param {Track} track
- * @returns {string}
+ *
+ * Aliased rather than reimplemented: the card, the chat card and every
+ * notification have to call an untitled track the same thing.
+ * @see module:victory-counter/track-view.trackDisplayName
  */
-function displayName(track) {
-  return track?.title || game.i18n.localize("PVC.DefaultTitle");
-}
+const displayName = trackDisplayName;
 
 /**
  * Persist a new tracks array, storing the previous one as a single-level undo

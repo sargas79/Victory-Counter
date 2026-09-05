@@ -14,6 +14,7 @@
  */
 
 import { bandTone, ladderPercent, resolveBand } from "./constants.js";
+import { trackDisplayName } from "./track-view.js";
 
 /**
  * A band's display name.
@@ -47,7 +48,7 @@ export function bandDisplayName(threshold) {
 export function buildThresholdView(track, { showLadder = false } = {}) {
   const band = resolveBand(track.current, track.thresholds);
   const tone = bandTone(band, track.start);
-  const displayTitle = track.title || game.i18n.localize("PVC.DefaultTitle");
+  const displayTitle = trackDisplayName(track);
   const bandLabel = bandDisplayName(band);
 
   return {
