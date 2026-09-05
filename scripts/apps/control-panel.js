@@ -18,12 +18,9 @@ import {
   LIMITS,
   MODULE_ID,
   RING,
-  STATUS,
   TRACK_MODES,
   TRACK_TYPES,
-  clampInt,
-  progressPercent,
-  ringDashOffset
+  clampInt
 } from "../constants.js";
 import {
   adjustTrack,
@@ -41,6 +38,7 @@ import {
   undo,
   updateTrackConfig
 } from "../state.js";
+import { trackCardBase } from "../track-view.js";
 import { buildThresholdView } from "../threshold-view.js";
 import { clampToMinimum, refitToViewport } from "./window-fit.js";
 
@@ -99,23 +97,11 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
   async _prepareContext(_options) {
     const rings = ringsEnabled();
     const tracks = getTracks().map((track) => {
-      const percent = progressPercent(track.current, track.target);
-      const negative = track.type === TRACK_TYPES.NEGATIVE;
       const threshold = isThresholdTrack(track);
 
       const base = {
-        ...track,
-        statusLabel: game.i18n.localize(`PVC.Status.${track.status}`),
-        complete: track.status === STATUS.COMPLETE,
+        ...trackCardBase(track),
         announcing: track.postToChat !== false,
-        negative,
-        typeLabel: game.i18n.localize(negative ? "PVC.Type.Negative" : "PVC.Type.Positive"),
-        typeTooltip: game.i18n.localize(
-          negative ? "PVC.Type.NegativeHint" : "PVC.Type.PositiveHint"
-        ),
-        percent: Math.round(percent),
-        ringOffset: ringDashOffset(percent),
-        displayTitle: track.title || game.i18n.localize("PVC.DefaultTitle"),
         // Shown on both modes so a GM who switched a track to progress can still
         // see that a ladder is waiting for it.
         thresholdCount: track.thresholds.length,
