@@ -120,7 +120,7 @@
 
   <div class="pvc-track-grid">
   {{#each tracks}}
-  <article class="pvc-card pvc-{{status}}{{#if threshold}} pvc-threshold pvc-tone-{{tone}}{{else}}{{#if negative}} pvc-negative{{/if}}{{#if complete}} pvc-resolved{{/if}}{{/if}}">
+  <article class="pvc-card pvc-{{status}}{{#if circle}} pvc-card-circle{{/if}}{{#if threshold}} pvc-threshold pvc-tone-{{tone}}{{else}}{{#if negative}} pvc-negative{{/if}}{{#if complete}} pvc-resolved{{/if}}{{/if}}">
 
     <div class="pvc-card-header">
       <span class="pvc-card-title" title="{{displayTitle}}">{{displayTitle}}</span>
@@ -155,6 +155,15 @@
       </span>
     </div>
 
+    {{#if circle}}
+    {{!-- ===== Rune circle ===== --}}
+    {{!-- The circle carries the value in its own centre, so the linear readout
+          above it would be the same number twice. The band name still needs
+          saying in words, so it stays as a kicker beneath the plate. --}}
+    {{> "modules/victory-counter/templates/rune-circle.hbs"}}
+    <span class="pvc-kicker pvc-tone-{{tone}}">{{bandLabel}}</span>
+    {{else}}
+
     {{!-- ===== Band readout ===== --}}
     <div class="pvc-readout" aria-label="{{progressLabel}}">
       <div class="pvc-figure">
@@ -164,6 +173,7 @@
     </div>
 
     {{> "modules/victory-counter/templates/threshold-ladder.hbs"}}
+    {{/if}}
 
     {{#if bandDescription}}
     <p class="pvc-band-description">{{bandDescription}}</p>
@@ -186,7 +196,12 @@
       <span class="pvc-status pvc-status-{{status}}">{{statusLabel}}</span>
     </div>
 
-    {{#if ../rings}}
+    {{#if circle}}
+    {{!-- ===== Rune circle ===== --}}
+    {{!-- Chosen per track, so it wins over the world-wide ring setting: a GM who
+          asked for a circle on this track asked for it on this track. --}}
+    {{> "modules/victory-counter/templates/rune-circle.hbs"}}
+    {{else if ../rings}}
     {{!-- ===== Ring readout ===== --}}
     <div class="pvc-ring-wrap">
       {{> "modules/victory-counter/templates/progress-ring.hbs" ring=../ring}}

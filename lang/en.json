@@ -4,17 +4,15 @@
   "PVC.Abbrev": "VP",
   "PVC.Progress": "Progress",
   "PVC.Value": "Value",
-
   "PVC.Status.running": "In Progress",
   "PVC.Status.complete": "Complete",
-
   "PVC.Mode.Progress": "Progress",
   "PVC.Mode.Threshold": "Thresholds",
-
+  "PVC.Display.Standard": "Standard",
+  "PVC.Display.Circle": "Rune circle",
   "PVC.Tone.positive": "Above the start",
   "PVC.Tone.neutral": "Status quo",
   "PVC.Tone.negative": "Below the start",
-
   "PVC.Threshold.BelowFirst": "Below the first threshold",
   "PVC.Threshold.UnnamedBand": "Threshold {value}",
   "PVC.Threshold.Rose": "Rose from",
@@ -42,21 +40,18 @@
   "PVC.Threshold.RemoveRung": "Remove this threshold",
   "PVC.Threshold.MaxRungs": "A track can have at most {max} thresholds.",
   "PVC.Threshold.SaveLadder": "Save Thresholds",
-
   "PVC.Type.Positive": "Positive",
   "PVC.Type.Negative": "Negative",
   "PVC.Type.PositiveHint": "Positive track — progress the party wants to make.",
   "PVC.Type.NegativeHint": "Negative track — progress that works against the party.",
-
   "PVC.Action.IncreaseHint": "Increase progress by 1",
   "PVC.Action.DecreaseHint": "Decrease progress by 1",
-
   "PVC.Aria.Progress": "{title}, {type} track, {current} of {target}",
   "PVC.Aria.Band": "{title}, value {value}, {band}",
-
+  "PVC.Aria.Circle": "{title}, {seated} of {total} runes in place",
+  "PVC.Aria.CircleBand": "{title}, value {value}, {band}, {seated} of {total} runes in place",
   "PVC.Controls.ToggleOverlay": "Show/Hide Victory Counter",
   "PVC.Controls.OpenPanel": "Victory Counter Controls",
-
   "PVC.Overlay.OpenPanel": "Open the control panel",
   "PVC.Overlay.Collapse": "Collapse",
   "PVC.Overlay.Expand": "Expand",
@@ -68,7 +63,6 @@
   "PVC.Overlay.CompactAdjustHint": "Left-click or Enter to increase by 1; right-click or Arrow Down to decrease by 1",
   "PVC.Overlay.CompactAdjustLabel": "{progress}. Adjust progress: Enter or Arrow Up increases by 1, Arrow Down decreases by 1",
   "PVC.Overlay.ResizeHint": "Drag to resize the counter; double-click to reset the width",
-
   "PVC.Panel.Title": "Victory Counter Controls",
   "PVC.Panel.AddTrackLegend": "Add a Track",
   "PVC.Panel.TracksLegend": "Tracks",
@@ -80,6 +74,8 @@
   "PVC.Panel.TargetHint": "Progress needed to complete this track (1-100).",
   "PVC.Panel.Mode": "Mode",
   "PVC.Panel.ModeHint": "Progress counts up to a target and completes there. Thresholds start at a value you set, move up and down, and take their meaning from the band they land in.",
+  "PVC.Panel.Display": "Display",
+  "PVC.Panel.DisplayHint": "How this track is drawn. Standard is the bar, ring or ladder. Rune circle seats one rune per point of the target, or per rung of the ladder, and moves each into place as the track fills.",
   "PVC.Panel.Start": "Start",
   "PVC.Panel.StartHint": "Where this track begins, where Reset returns it to, and the value every band is read against.",
   "PVC.Panel.Min": "Minimum",
@@ -117,7 +113,6 @@
   "PVC.Panel.End": "End Track",
   "PVC.Panel.MoveUp": "Move up",
   "PVC.Panel.MoveDown": "Move down",
-
   "PVC.Confirm.ResetTitle": "Reset Progress?",
   "PVC.Confirm.ResetContent": "Progress will be set back to zero. The track's name, target and type are kept.",
   "PVC.Confirm.ResetToStartContent": "The value will be set back to its starting point ({value}). The track's thresholds and their descriptions are kept.",
@@ -126,7 +121,6 @@
   "PVC.Confirm.EndTitle": "End Track?",
   "PVC.Confirm.EndContent": "\"{title}\" will end and disappear from every player's screen.",
   "PVC.Confirm.EndNote": "Nothing else in the world is changed. Use Undo to bring the track back.",
-
   "PVC.Notify.GMOnly": "Only a Gamemaster can change the victory counter.",
   "PVC.Notify.WriteFailed": "The victory counter could not be saved. Check the console for details.",
   "PVC.Notify.NoTrack": "That track is no longer running.",
@@ -162,7 +156,6 @@
   "PVC.Notify.MigrationFailed": "Victory counter data could not be migrated. The original data was left untouched; check the console.",
   "PVC.Notify.UILoadFailed": "The victory counter interface could not be loaded. Track data is safe and unchanged. This usually means a module file is damaged or was only partially deployed — reinstall the module folder and reload. See the console for details.",
   "PVC.Notify.BootstrapFailed": "Victory Counter failed to start and will not appear in the scene controls. Track data is safe and unchanged. Reinstall the module folder and reload; see the console for details.",
-
   "PVC.Reason.Started": "Track started.",
   "PVC.Reason.Reconfigured": "Track settings updated.",
   "PVC.Reason.Adjusted": "Progress {delta}",
@@ -170,10 +163,10 @@
   "PVC.Reason.Reset": "Progress reset to zero.",
   "PVC.Reason.ResetToStart": "Value returned to its starting point.",
   "PVC.Reason.ThresholdsUpdated": "Thresholds updated.",
+  "PVC.Reason.RunesUpdated": "Runes updated.",
   "PVC.Reason.Cleared": "Track ended.",
   "PVC.Reason.Undone": "Last change undone.",
   "PVC.Reason.Reordered": "Track order changed.",
-
   "PVC.Settings.Tracks.Name": "Active Track Data",
   "PVC.Settings.Undo.Name": "Undo Snapshot",
   "PVC.Settings.Schema.Name": "Track Data Schema Version",
@@ -199,5 +192,29 @@
   "PVC.Settings.PostChat.Name": "Post Progress to Chat",
   "PVC.Settings.PostChat.Hint": "Post a chat card whenever a track changes. Acts as a master switch: individual tracks can still opt out. Cards are whispered to GMs while that track is hidden from players.",
   "PVC.Settings.Debug.Name": "Debug Logging",
-  "PVC.Settings.Debug.Hint": "Write verbose diagnostics to the browser console, prefixed with [victory-counter]. Also prints the data migration summary."
+  "PVC.Settings.Debug.Hint": "Write verbose diagnostics to the browser console, prefixed with [victory-counter]. Also prints the data migration summary.",
+  "PVC.Circle.SeatName": "Rune {index}",
+  "PVC.Circle.SeatOrdinal": "Seat {index}",
+  "PVC.Circle.SeatRung": "Band at {value}",
+  "PVC.Circle.Unknown": "Not yet revealed",
+  "PVC.Circle.SeatSummary": "{count} seats.",
+  "PVC.Circle.NoSeats": "No seats yet. A progress track seats one rune per point of its target; a threshold track seats one per rung, so write its ladder first.",
+  "PVC.Circle.TooManySeats": "{seats} seats is more than a circle can show, so this track is drawn with its standard readout. Lower the target to {max} or fewer to get the circle back; the choice is remembered either way.",
+  "PVC.Circle.EditRunes": "Runes",
+  "PVC.Circle.EditRunesHint": "Choose the glyph and name each seat carries. Every seat already has a default, so this is optional.",
+  "PVC.Circle.EditorTitle": "Runes",
+  "PVC.Circle.EditorTitleFor": "Runes: {title}",
+  "PVC.Circle.SeatsLegend": "The circle",
+  "PVC.Circle.EditorHint": "Each seat shows the glyph and name it uses by default. Type over either to replace it, or clear the field to go back to the default.",
+  "PVC.Circle.NotDrawnNotice": "This track is not currently drawn as a circle, so nothing you set here will be visible yet. It is still saved.",
+  "PVC.Circle.TruncatedNotice": "Showing the first {shown} of {total} seats — the most a circle can hold.",
+  "PVC.Circle.RunesLegend": "Seats",
+  "PVC.Circle.Glyph": "Glyph",
+  "PVC.Circle.GlyphHint": "One character. Paste any symbol your players' browsers can render.",
+  "PVC.Circle.Label": "Name",
+  "PVC.Circle.LabelHint": "What this rune is called in its tooltip. On a threshold track it replaces the band's own name.",
+  "PVC.Circle.ClearRunes": "Clear all",
+  "PVC.Circle.ClearRunesHint": "Empties every field, restoring the defaults.",
+  "PVC.Circle.SaveRunes": "Save runes",
+  "PVC.Notify.RunesSaved": "Runes saved."
 }

@@ -8,6 +8,7 @@
 
 import {
   MODULE_ID,
+  TRACK_DISPLAYS,
   TRACK_MODES,
   TRACK_TYPES,
   logError,
@@ -24,6 +25,8 @@ import {
   removeTrack,
   resetTrackProgress,
   setTrackCurrent,
+  setTrackDisplay,
+  setTrackRunes,
   setTrackThresholds,
   setTrackType,
   toggleThresholdAnnounce,
@@ -92,6 +95,8 @@ function deprecate(oldName, newName) {
  * @property {(id: string, thresholds: object[]) => Promise<object|null>} setThresholds
  * @property {(id: string) => object|null}                           getBand
  * @property {(id: string) => Promise<object|null>}                  toggleThresholdAnnounce
+ * @property {(id: string, display: string) => Promise<object|null>} setDisplay
+ * @property {(id: string, runes: object[]) => Promise<object|null>} setRunes
  * @property {(id: string, direction: -1|1) => Promise<object[]|null>} move
  * @property {() => Promise<object[]|null>}                          undo
  * @property {() => boolean}                                         canUndo
@@ -107,6 +112,9 @@ export const api = {
 
   /** Track modes, for the same reason. */
   MODES: { ...TRACK_MODES },
+
+  /** Display choices, for the same reason. */
+  DISPLAYS: { ...TRACK_DISPLAYS },
 
   /** All tracks (sanitized copies), in display order. */
   getTracks: () => getTracks(),
@@ -185,6 +193,34 @@ export const api = {
 
   /** Flip whether a threshold track announces band changes in chat. */
   toggleThresholdAnnounce: (id) => toggleThresholdAnnounce(id),
+
+  /* ------------------------------------------ */
+  /*  Rune circle                               */
+  /* ------------------------------------------ */
+
+  /**
+   * Choose how a track is drawn: `"standard"` or `"circle"`.
+   *
+   * Touches no value, bound or status — a circle is a way of showing a track,
+   * not a way of counting one, and switching back and forth is free.
+   *
+   * @param {string} id
+   * @param {"standard"|"circle"} display
+   */
+  setDisplay: (id, display) => setTrackDisplay(id, display),
+
+  /**
+   * Replace a track's per-seat rune overrides.
+   *
+   * Entries are `{key, glyph, label}`, where `key` is the rung id on a
+   * threshold track and the seat's index as a string (`"0"`, `"1"`, ...) on a
+   * progress one. An entry naming neither a glyph nor a label is dropped, so
+   * passing an empty array clears every override.
+   *
+   * @param {string} id
+   * @param {object[]} runes
+   */
+  setRunes: (id, runes) => setTrackRunes(id, runes),
 
   /* ------------------------------------------ */
 

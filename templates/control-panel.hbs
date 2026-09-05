@@ -18,7 +18,7 @@
 
 <div class="pvc-panel-body">
 
-<fieldset class="pvc-panel-config" data-mode-scope data-mode="progress">
+<fieldset class="pvc-panel-config" data-mode-scope data-mode="progress" data-display="standard">
   <legend>{{localize "PVC.Panel.AddTrackLegend"}}</legend>
 
   {{#if atMax}}
@@ -42,6 +42,18 @@
         <select id="pvc-new-mode" name="new-mode" data-mode-select
                 data-tooltip="{{localize 'PVC.Panel.ModeHint'}}">
           {{#each modes}}
+          <option value="{{value}}">{{label}}</option>
+          {{/each}}
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group pvc-field-narrow">
+      <label for="pvc-new-display">{{localize "PVC.Panel.Display"}}</label>
+      <div class="form-fields">
+        <select id="pvc-new-display" name="new-display" data-display-select
+                data-tooltip="{{localize 'PVC.Panel.DisplayHint'}}">
+          {{#each displays}}
           <option value="{{value}}">{{label}}</option>
           {{/each}}
         </select>
@@ -148,8 +160,8 @@
         survives a switch to threshold mode, so a track that used to be Negative
         would otherwise keep its red numerals while its band tone says the
         opposite; and a threshold track never completes. --}}
-  <div class="pvc-track-card{{#if threshold}} pvc-threshold pvc-tone-{{tone}}{{else}}{{#if negative}} pvc-negative{{/if}}{{#if complete}} pvc-resolved{{/if}}{{/if}}"
-       data-id="{{id}}" data-mode-scope data-mode="{{mode}}">
+  <div class="pvc-track-card{{#if circle}} pvc-card-circle{{/if}}{{#if threshold}} pvc-threshold pvc-tone-{{tone}}{{else}}{{#if negative}} pvc-negative{{/if}}{{#if complete}} pvc-resolved{{/if}}{{/if}}"
+       data-id="{{id}}" data-mode-scope data-mode="{{mode}}" data-display="{{display}}">
 
     <div class="pvc-panel-status-line">
       {{#if threshold}}
@@ -187,7 +199,11 @@
       </div>
     </div>
 
-    {{#if threshold}}
+    {{#if circle}}
+    <div class="pvc-runes-compact">
+      {{> "modules/victory-counter/templates/rune-circle.hbs"}}
+    </div>
+    {{else if threshold}}
     {{> "modules/victory-counter/templates/threshold-ladder.hbs"}}
     {{else if ../rings}}
     <div class="pvc-ring-wrap pvc-ring-compact">
@@ -204,15 +220,69 @@
       </div>
     </div>
 
-    <div class="form-group pvc-field-narrow">
-      <label for="pvc-mode-{{id}}">{{localize "PVC.Panel.Mode"}}</label>
-      <div class="form-fields">
-        <select id="pvc-mode-{{id}}" name="mode-{{id}}" data-mode-select
-                data-tooltip="{{localize 'PVC.Panel.ModeHint'}}">
-          {{#each ../modes}}
-          <option value="{{value}}" {{#if (eq value ../mode)}}selected{{/if}}>{{label}}</option>
-          {{/each}}
-        </select>
+    <div class="pvc-field-row">
+      <div class="form-group pvc-field-narrow">
+        <label for="pvc-mode-{{id}}">{{localize "PVC.Panel.Mode"}}</label>
+        <div class="form-fields">
+          <select id="pvc-mode-{{id}}" name="mode-{{id}}" data-mode-select
+                  data-tooltip="{{localize 'PVC.Panel.ModeHint'}}">
+            {{#each ../modes}}
+            <option value="{{value}}" {{#if (eq value ../mode)}}selected{{/if}}>{{label}}</option>
+            {{/each}}
+          </select>
+        </div>
+      </div>
+
+      {{!-- Display sits beside mode because it is the same kind of decision made
+            once, and because the two together are what the card looks like. It
+            is not inside either mode group: a circle is offered on both. --}}
+      <div class="form-group pvc-field-narrow">
+        <label for="pvc-display-{{id}}">{{localize "PVC.Panel.Display"}}</label>
+        <div class="form-fields">
+          <select id="pvc-display-{{id}}" name="display-{{id}}" data-display-select
+                  data-tooltip="{{localize 'PVC.Panel.DisplayHint'}}">
+            {{#each ../displays}}
+            <option value="{{value}}" {{#if (eq value ../display)}}selected{{/if}}>{{label}}</option>
+            {{/each}}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div data-display-group="circle">
+      {{#if wantsCircle}}
+      {{#unless circle}}
+      {{!-- The choice is stored, so it comes back the moment the track can carry
+            a circle again. Saying why beats a card that silently ignores the
+            display the GM just picked. --}}
+      <p class="notes"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+        {{#if seatCount}}
+        {{localize "PVC.Circle.TooManySeats" seats=seatCount max=../circleLimits.MAX_POSITIONS}}
+        {{else}}
+        {{localize "PVC.Circle.NoSeats"}}
+        {{/if}}
+      </p>
+      {{/unless}}
+      {{/if}}
+
+      <div class="pvc-ladder-summary">
+        {{!-- The seat count only, never the empty case: with no seats the notice
+              above has already said so, at more length and with the reason. --}}
+        <span class="notes">
+          {{#if seatCount}}{{localize "PVC.Circle.SeatSummary" count=seatCount}}{{/if}}
+        </span>
+        {{!-- Gated on there being a seat to edit, not on the circle being drawn.
+              A track that has fallen back to its standard readout still has
+              seats the GM may want to name before fixing the target, and the
+              editor is built for exactly that — it says so on opening. With no
+              seats at all there is nothing to show, and the notice above has
+              already explained why. --}}
+        <button type="button" data-action="editRunes" data-id="{{id}}"
+                {{disabled (not seatCount)}}
+                data-tooltip="{{localize 'PVC.Circle.EditRunesHint'}}">
+          <i class="fa-solid fa-wand-magic-sparkles" aria-hidden="true"></i>
+          {{localize "PVC.Circle.EditRunes"}}
+        </button>
       </div>
     </div>
 

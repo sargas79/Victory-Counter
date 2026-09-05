@@ -1,0 +1,104 @@
+{{!-- The rune editor. One row per seat of the track's circle, held as a local
+      draft until the GM saves; nothing here writes to the world on its own.
+
+      Both fields are optional and both show the seat's default as a
+      *placeholder* rather than as a value. That is what makes clearing a field
+      mean "give me the default back": an empty row is stored as no override at
+      all, so a seat the GM never touched keeps following the ladder or the
+      stave order even after the track around it changes.
+
+      Rows are addressed with `data-field` rather than `name`: two dozen rows of
+      identically-named inputs would form an ambiguous submission, and this form
+      is never submitted natively anyway.
+
+      An ApplicationV2 template part must resolve to exactly one root element. --}}
+
+<div class="pvc-threshold-body">
+
+{{#if missing}}
+<p class="notes">{{localize "PVC.Notify.NoTrack"}}</p>
+{{else}}
+
+{{!-- Everything except Save scrolls, for the reason the ladder editor gives:
+      Save is the one control that has to stay reachable at any window size. --}}
+<div class="pvc-threshold-scroll">
+
+<fieldset class="pvc-threshold-intro">
+  <legend>{{localize "PVC.Circle.SeatsLegend"}}</legend>
+  <p class="hint">{{localize "PVC.Circle.EditorHint"}}</p>
+  {{#unless drawn}}
+  <p class="notes"><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+    {{localize "PVC.Circle.NotDrawnNotice"}}</p>
+  {{#if truncated}}
+  {{!-- The track wants more seats than a circle can hold, so the list below is
+        the ones it could. Without this the GM counts 24 rows against a target
+        of 60 and reasonably concludes the editor dropped some. --}}
+  <p class="notes">{{localize "PVC.Circle.TruncatedNotice" shown=shown total=seatTotal}}</p>
+  {{/if}}
+  {{/unless}}
+</fieldset>
+
+<fieldset class="pvc-threshold-rows">
+  <legend>{{localize "PVC.Circle.RunesLegend"}}</legend>
+
+  {{#if empty}}
+  <p class="notes">{{localize "PVC.Circle.NoSeats"}}</p>
+  {{/if}}
+
+  {{#each rows}}
+  <div class="pvc-rune-row" data-rune-row data-key="{{key}}">
+
+    <span class="pvc-rune-preview" aria-hidden="true">{{defaultGlyph}}</span>
+
+    <div class="pvc-rune-fields">
+      <span class="pvc-rune-caption">{{caption}}</span>
+
+      <div class="pvc-field-row">
+        <div class="form-group pvc-field-narrow">
+          <label for="pvc-rune-glyph-{{key}}">{{localize "PVC.Circle.Glyph"}}</label>
+          <div class="form-fields">
+            <input type="text" id="pvc-rune-glyph-{{key}}" data-field="glyph"
+                   value="{{glyph}}" placeholder="{{defaultGlyph}}"
+                   maxlength="{{../limits.RUNE_GLYPH_INPUT_MAXLENGTH}}"
+                   data-tooltip="{{localize 'PVC.Circle.GlyphHint'}}">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="pvc-rune-label-{{key}}">{{localize "PVC.Circle.Label"}}</label>
+          <div class="form-fields">
+            <input type="text" id="pvc-rune-label-{{key}}" data-field="label"
+                   value="{{label}}" placeholder="{{defaultName}}"
+                   maxlength="{{../limits.MAX_THRESHOLD_LABEL}}"
+                   data-tooltip="{{localize 'PVC.Circle.LabelHint'}}">
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  {{/each}}
+
+  {{#unless empty}}
+  <footer class="pvc-panel-actions">
+    <button type="button" data-action="clearRunes">
+      <i class="fa-solid fa-eraser" aria-hidden="true"></i>
+      {{localize "PVC.Circle.ClearRunes"}}
+    </button>
+    <span class="notes">{{localize "PVC.Circle.ClearRunesHint"}}</span>
+  </footer>
+  {{/unless}}
+</fieldset>
+
+</div>
+
+<footer class="pvc-panel-actions pvc-threshold-save">
+  <button type="button" class="pvc-primary" data-action="saveRunes">
+    <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+    {{localize "PVC.Circle.SaveRunes"}}
+  </button>
+</footer>
+
+{{/if}}
+
+</div>

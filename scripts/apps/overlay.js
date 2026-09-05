@@ -38,6 +38,7 @@ import {
 } from "../state.js";
 import { trackCardBase } from "../track-view.js";
 import { buildThresholdView } from "../threshold-view.js";
+import { buildRuneView, usesRuneCircle } from "../rune-view.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
 
@@ -77,12 +78,17 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
     const rings = ringsEnabled();
 
     const tracks = getVisibleTracks().map((track) => {
-      const base = {
-        ...trackCardBase(track),
-        lastChange: this.#formatLastChange(track)
-      };
+      // What the GM has chosen to give away about the scale ahead. It governs
+      // the ladder's rung numbers and a rune circle's unearned names alike:
+      // both are the same secret asked about twice.
+      const reveal = isGM || track.revealLadder === true;
 
-      if (!isThresholdTrack(track)) return { ...base, threshold: false };
+      let card = {
+        ...trackCardBase(track),
+        lastChange: this.#formatLastChange(track),
+        threshold: false,
+        circle: false
+      };
 
       // A threshold track replaces the progress readout wholesale, including its
       // aria label — "4 of 12" says nothing useful when the meaning lives in the
@@ -91,12 +97,19 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
       // Rung *numbers* are the GM's to give away: players see the ticks and
       // their own band either way, and the rest of the ladder only when the GM
       // has revealed it.
-      return {
-        ...base,
-        ...buildThresholdView(track, {
-          showLadder: isGM || track.revealLadder === true
-        })
-      };
+      if (isThresholdTrack(track)) {
+        card = { ...card, ...buildThresholdView(track, { showLadder: reveal }) };
+      }
+
+      // Layered on top rather than branched against, because the circle is a
+      // display and not a mode: a threshold track drawn as a circle still wants
+      // its band badge, its description and its tone, and only the rail itself
+      // is replaced.
+      if (usesRuneCircle(track)) {
+        card = { ...card, ...buildRuneView(track, { showLabels: reveal }) };
+      }
+
+      return card;
     });
 
     return {

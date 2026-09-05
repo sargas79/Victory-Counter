@@ -1,0 +1,44 @@
+{{!--
+  The rune circle, shared by the HUD and the GM control panel.
+
+  Expects a rune-shaped context — `runes`, `seatCount`, `seatedCount`,
+  `circleLabel` from `buildRuneView` — spread over the usual track fields, of
+  which it reads `current`, `target`, `threshold` and `complete`.
+
+  Each rune is an absolutely positioned span rather than an SVG node, the same
+  way the ladder places its ticks: it keeps `data-tooltip` and text rendering
+  working, and it lets one CSS transition carry a rune from its drift to its
+  seat. Both positions are computed in JS (`runeSeats`), so there is no
+  arithmetic here and the whole figure scales from the plate's own width.
+
+  A rune's *state* is never colour alone: a seated rune is upright, bright and
+  on the ring, while an unearned one is dim, tilted and outside it — and the
+  centre readout spells the count out in digits regardless.
+
+  The plate is aria-hidden and the wrapper carries the full label, so a screen
+  reader announces "Seal the Rift, 3 of 8 runes in place" rather than reading a
+  loose alphabet.
+--}}
+<div class="pvc-runes{{#if complete}} pvc-runes-complete{{/if}}{{#if threshold}} pvc-tone-{{tone}}{{/if}}"
+     role="img" aria-label="{{circleLabel}}" data-seats="{{seatCount}}">
+
+  <div class="pvc-runes-plate" aria-hidden="true">
+    <span class="pvc-runes-glow"></span>
+    <span class="pvc-runes-rim"></span>
+    <span class="pvc-runes-ring"></span>
+
+    {{#each runes}}
+    <span class="pvc-rune{{#if seated}} pvc-rune-seated{{else}} pvc-rune-adrift{{/if}}{{#if active}} pvc-rune-active{{/if}}{{#if tone}} pvc-tone-{{tone}}{{/if}}"
+          style="left: {{left}}%; top: {{top}}%; --pvc-rune-tilt: {{rotation}}deg;"
+          data-tooltip="{{tooltip}}">{{glyph}}</span>
+    {{/each}}
+
+    <span class="pvc-runes-core">
+      <span class="pvc-runes-value">{{current}}</span>
+      {{#unless threshold}}
+      <span class="pvc-runes-divider">/</span>
+      <span class="pvc-runes-target">{{target}}</span>
+      {{/unless}}
+    </span>
+  </div>
+</div>
