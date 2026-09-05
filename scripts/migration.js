@@ -276,6 +276,14 @@ export function migrateTrackData(raw) {
     ? raw.type
     : TRACK_TYPES.POSITIVE;
 
+  // --- v4 -> v5 -----------------------------------------------------------
+  // Nothing to reinterpret. `display` and `runes` are drawn from DEFAULT_TRACK
+  // during sanitization, which lands every pre-5 track on the standard readout
+  // with no overrides — exactly how it was already being drawn. Unlike `mode`
+  // and `type` above, `display` needs no defensive pass here either: it is
+  // validated in `state.sanitizeTrack`, and an unknown value there costs a
+  // wrong-looking card rather than a wrongly-bounded counter.
+
   // Legacy failure fields are no longer part of the schema. They survive inside
   // `legacy`; leaving copies at the top level would resurrect on every merge.
   for (const key of LEGACY_KEYS) delete migrated[key];

@@ -18,12 +18,14 @@
  */
 
 import {
+  CIRCLE,
   DEFAULT_TRACK,
   LIMITS,
   MODULE_ID,
   SCHEMA_VERSION,
   SETTINGS,
   STATUS,
+  TRACK_DISPLAYS,
   TRACK_MODES,
   TRACK_TYPES,
   bandTone,
@@ -47,12 +49,22 @@ import { trackDisplayName } from "./track-view.js";
  */
 
 /**
+ * @typedef {object} RuneOverride
+ * @property {string} key   Seat identity: a rung id on a threshold track, the
+ *                          ordinal index as a string on a progress track.
+ * @property {string} glyph GM-supplied glyph, or "" to keep the default stave.
+ * @property {string} label GM-supplied name for the seat, or "".
+ */
+
+/**
  * @typedef {object} Track
  * @property {number}  schema             Persisted schema version.
  * @property {string}  id                 Stable identifier for this track.
  * @property {boolean} active             Whether the track is currently running.
  * @property {string}  title              GM-supplied track name.
  * @property {string}  mode               One of TRACK_MODES: "progress" | "threshold".
+ * @property {string}  display            One of TRACK_DISPLAYS: "standard" | "circle".
+ * @property {RuneOverride[]} runes       Per-seat glyph/label overrides. Circle display.
  * @property {string}  type               One of TRACK_TYPES: "positive" | "negative".
  * @property {number}  current            Current value. Never negative in progress mode.
  * @property {number}  target             Progress needed to complete. Progress mode only.
@@ -130,6 +142,54 @@ export function sanitizeThresholds(raw) {
 }
 
 /**
+ * Coerce arbitrary stored data into a valid rune override.
+ * @param {any} raw
+ * @returns {RuneOverride}
+ */
+export function sanitizeRune(raw) {
+  const source = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
+  return {
+    key: String(source.key ?? "").trim(),
+    // Sliced by code point rather than by `String.slice`, which counts UTF-16
+    // units: most of the symbols a GM is likely to paste in are surrogate pairs,
+    // and cutting one in half stores half a character that renders as a
+    // replacement mark on every screen.
+    glyph: [...String(source.glyph ?? "").trim()].slice(0, LIMITS.MAX_RUNE_GLYPH).join(""),
+    label: String(source.label ?? "").trim().slice(0, LIMITS.MAX_THRESHOLD_LABEL)
+  };
+}
+
+/**
+ * Sanitize a raw set of rune overrides.
+ *
+ * An override that names neither a glyph nor a label is dropped rather than
+ * stored: it says nothing the default seat does not already say, and keeping
+ * one row per seat would mean every circle the GM merely *looked* at grew a
+ * full-length array of blanks.
+ *
+ * Order is not meaningful — a seat finds its override by key — so the list is
+ * left in the order it arrived, with the first entry for a key winning.
+ *
+ * @param {any} raw
+ * @returns {RuneOverride[]}
+ */
+export function sanitizeRunes(raw) {
+  const list = Array.isArray(raw) ? raw : [];
+  const byKey = new Map();
+
+  for (const entry of list) {
+    if (byKey.size >= CIRCLE.MAX_POSITIONS) break;
+    const rune = sanitizeRune(entry);
+    if (!rune.key) continue;
+    if (!rune.glyph && !rune.label) continue;
+    if (byKey.has(rune.key)) continue;
+    byKey.set(rune.key, rune);
+  }
+
+  return [...byKey.values()];
+}
+
+/**
  * Coerce arbitrary stored data into a valid Track.
  * The record is migrated to the current shape first, then merged onto the
  * defaults with `insertKeys: false` so unknown keys are dropped and missing
@@ -166,6 +226,15 @@ export function sanitizeTrack(raw) {
   merged.mode = Object.values(TRACK_MODES).includes(merged.mode)
     ? merged.mode
     : TRACK_MODES.PROGRESS;
+
+  // Display and its overrides are normalized in both modes and under both
+  // displays, for the same reason the threshold fields below are: a track drawn
+  // as standard keeps a usable circle to switch back to, and no caller has to
+  // check the display before trusting the field.
+  merged.display = Object.values(TRACK_DISPLAYS).includes(merged.display)
+    ? merged.display
+    : TRACK_DISPLAYS.STANDARD;
+  merged.runes = sanitizeRunes(merged.runes);
 
   merged.target = clampInt(merged.target, LIMITS.MIN_TARGET, LIMITS.MAX_TARGET);
 
@@ -814,6 +883,52 @@ export async function setTrackThresholds(id, thresholds) {
   );
   if (result) ui.notifications.info(game.i18n.localize("PVC.Notify.ThresholdsSaved"));
   return result ? result.find((t) => t.id === id) ?? null : null;
+}
+
+/**
+ * Replace a track's rune overrides.
+ *
+ * Posts no chat card, for the same reason {@link setTrackThresholds} does not:
+ * renaming the seats of a circle is housekeeping, not a development at the
+ * table. Overrides for seats that no longer exist are kept rather than pruned —
+ * a rung the GM deletes and re-adds by mistake gets its glyph back, and a
+ * progress track whose target is lowered and raised again does too.
+ *
+ * @param {string} id
+ * @param {any[]} runes
+ * @returns {Promise<Track|null>}
+ */
+export async function setTrackRunes(id, runes) {
+  if (!assertGM()) return null;
+  const current = getTracks();
+  const track = current.find((t) => t.id === id);
+  if (!track) {
+    ui.notifications.warn(game.i18n.localize("PVC.Notify.NoTrack"));
+    return null;
+  }
+
+  const clean = sanitizeRunes(runes);
+  const result = await persistTracks(
+    current.map((t) => (t.id === id ? { ...t, runes: clean } : t)),
+    { reason: game.i18n.localize("PVC.Reason.RunesUpdated") }
+  );
+  if (result) ui.notifications.info(game.i18n.localize("PVC.Notify.RunesSaved"));
+  return result ? result.find((t) => t.id === id) ?? null : null;
+}
+
+/**
+ * Change how a track is drawn. GM only; touches no value, bound or status.
+ * @param {string} id
+ * @param {"standard"|"circle"} display
+ * @returns {Promise<Track|null>}
+ */
+export async function setTrackDisplay(id, display) {
+  if (!assertGM()) return null;
+  if (!Object.values(TRACK_DISPLAYS).includes(display)) {
+    logError(`Refusing to set unknown track display "${display}".`);
+    return null;
+  }
+  return updateTrackConfig(id, { display });
 }
 
 /**

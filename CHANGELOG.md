@@ -7,6 +7,48 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Rune circles.** A second way to draw a track, chosen per track in the new
+  **Display** field beside **Mode**. The track is drawn as a ring of seats with a
+  rune for each: they all begin adrift outside the circle — dim, tilted,
+  scattered — and each success slides one into its place on the ring, upright and
+  lit. The rune at the leading edge is marked, so the circle shows where the
+  track has got to and not merely how full it is.
+
+  Display and Mode are separate fields, and this is what lets one figure serve
+  both. A *progress* track seats one rune per point of its target, so a rune is a
+  success. A *threshold* track seats one per rung of its ladder, so a rune is a
+  band, seated when the value reaches it and marked when the value sits in it —
+  and it keeps its band badge, its tones, its descriptions, its band-change chat
+  cards and **Show Players Every Threshold** while wearing the circle. Only the
+  ladder rail is replaced. Nothing about how a track counts changes, so switching
+  Display back and forth is free and never touches a value.
+
+  Seats carry the 24 staves of the Elder Futhark by default, assigned in order,
+  so a circle is usable the moment it is switched on. The new **Runes** editor on
+  each track card gives any seat a different glyph or name; the defaults show as
+  placeholders, so clearing a field restores the default rather than blanking the
+  seat, and a circle nobody customised stores nothing. Overrides are tied to the
+  rung on a threshold track rather than to the position, so inserting a band
+  lower down does not shuffle everyone's glyphs.
+
+  A circle shows between 1 and 24 seats. Beyond that the glyphs stop being
+  countable at a glance, so a progress track with a larger target — or a
+  threshold track whose ladder is still empty — falls back to its standard
+  readout, and the control panel says which of the two it is. The choice is
+  remembered either way, so the circle returns the moment the track can carry
+  one.
+
+  State is never carried by colour alone: a seated rune differs from an adrift
+  one in position, tilt, weight, size and opacity, the count is spelled out in
+  digits at the centre of the plate, and every rune names itself in a tooltip.
+  The whole figure carries one accessible name — "Seal the Rift, 3 of 8 runes in
+  place" — rather than reading a loose alphabet, and an unearned rune on a
+  threshold circle stays unnamed until the GM reveals the ladder, the same call
+  `revealLadder` already makes for the rail. The slide is a CSS transition on
+  positions computed in JS, so the existing **Reduce Motion** handling turns it
+  into an instant snap with every state still readable.
+- **`setDisplay()` and `setRunes()`** in the macro API, plus `vc.DISPLAYS`.
+  `display` is also accepted by `create()` and `configure()`.
 - **Threshold tracks.** A track now runs in one of two modes. *Progress* is what
   the module has always done: count up from zero to a target and complete there.
   *Thresholds* is new: the track starts at a value the GM sets, moves up **and**
@@ -56,6 +98,11 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- **Schema 5.** Purely additive over schema 4 and invisible on load: every
+  existing track gains `display: "standard"` and an empty `runes` array, which is
+  exactly how it was already being drawn. Nothing needed reinterpreting, so there
+  is no migration step beyond the version stamp — the two fields are backfilled
+  from the defaults during the sanitization every read already performs.
 - **Schema 4.** Purely additive over schema 3: every existing track gains
   `mode: "progress"`, which is exactly what it already was, and no stored value
   changes meaning. New fields are `mode`, `start`, `min`, `max`, `thresholds`,

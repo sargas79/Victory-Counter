@@ -61,8 +61,11 @@ export const SETTINGS = Object.freeze({
  * - 4:   `mode`, plus the threshold fields (`start`, `min`, `max`, `thresholds`,
  *        `band`). Purely additive: every v3 field keeps its meaning, and a v3
  *        record becomes a v4 progress track without any value being rewritten.
+ * - 5:   `display` and `runes`. Additive in the same way, and for a stronger
+ *        reason: they decide only how a track is *drawn*, so a v4 record
+ *        becomes a v5 record that renders exactly as it did before.
  */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 /** Resolution states a track can be in. */
 export const STATUS = Object.freeze({
@@ -88,6 +91,31 @@ export const TRACK_MODES = Object.freeze({
 export const TRACK_MODE_LABELS = Object.freeze({
   [TRACK_MODES.PROGRESS]: "PVC.Mode.Progress",
   [TRACK_MODES.THRESHOLD]: "PVC.Mode.Threshold"
+});
+
+/**
+ * How a track is *drawn*. Stored per track, and deliberately independent of
+ * {@link TRACK_MODES}, which decides how a track is *counted*.
+ *
+ * Keeping the two apart is what lets the rune circle sit on top of either mode
+ * without either of them learning about it: a progress track seats one rune per
+ * point of its target, a threshold track seats one per rung of its ladder, and
+ * both still count exactly as they always did.
+ *
+ * - `standard`: the readout the module has always drawn — a bar or a ring for a
+ *               progress track, the ladder rail for a threshold one.
+ * - `circle`:   a ring of seats with runes that start adrift outside it and
+ *               move into place as the track fills.
+ */
+export const TRACK_DISPLAYS = Object.freeze({
+  STANDARD: "standard",
+  CIRCLE: "circle"
+});
+
+/** Localization keys for the display choices, keyed by stored value. */
+export const TRACK_DISPLAY_LABELS = Object.freeze({
+  [TRACK_DISPLAYS.STANDARD]: "PVC.Display.Standard",
+  [TRACK_DISPLAYS.CIRCLE]: "PVC.Display.Circle"
 });
 
 /**
@@ -151,7 +179,20 @@ export const LIMITS = Object.freeze({
    * it stays usable at a height that would leave the panel unusable.
    */
   MIN_EDITOR_WIDTH: 420,
-  MIN_EDITOR_HEIGHT: 260
+  MIN_EDITOR_HEIGHT: 260,
+  /**
+   * Rune editor window. Narrower than the ladder editor because a rune row is
+   * two short fields rather than four, and no taller for the same reason the
+   * ladder editor is short: it is a list, and it scrolls.
+   */
+  MIN_RUNE_EDITOR_WIDTH: 360,
+  MIN_RUNE_EDITOR_HEIGHT: 260,
+  /**
+   * A rune override is a glyph, not a word. Two characters is enough for a
+   * surrogate pair — most of the symbols a GM is likely to paste in live above
+   * the basic plane — and short enough that the seat stays a seat.
+   */
+  MAX_RUNE_GLYPH: 2
 });
 
 /**
@@ -162,6 +203,40 @@ export const RING = Object.freeze({
   RADIUS: 42,
   CIRCUMFERENCE: Number((2 * Math.PI * 42).toFixed(3))
 });
+
+/**
+ * Geometry of the rune circle, in percentages of the plate it is drawn on, so
+ * the whole figure scales with the card and the template never does arithmetic.
+ *
+ * `MAX_POSITIONS` is 24 because {@link RUNE_GLYPHS} has 24 staves and because a
+ * circle stops being countable at a glance well before that. A track that would
+ * need more seats than this falls back to its standard readout rather than
+ * cramming them in — see `runeSeatCount` in `rune-view.js`.
+ */
+export const CIRCLE = Object.freeze({
+  /** The ring the runes settle onto. */
+  SEAT_RADIUS: 34,
+  /** Where an unearned rune hangs, before the per-seat scatter below. */
+  ADRIFT_RADIUS: 44,
+  MAX_POSITIONS: 24
+});
+
+/**
+ * The default glyph set: the 24 staves of the Elder Futhark, in their
+ * traditional order.
+ *
+ * Auto-assigned by seat index, so a rune circle is legible the moment it is
+ * switched on and the GM only opens the rune editor if they want something
+ * else. Drawn as text rather than as paths because 24 hand-authored SVG glyphs
+ * would be 24 things to get subtly wrong; the CSS names an explicit font stack
+ * so a host without Runic coverage shows a visible box rather than nothing, and
+ * any seat can be overridden regardless.
+ */
+export const RUNE_GLYPHS = Object.freeze([
+  "ᚠ", "ᚢ", "ᚦ", "ᚨ", "ᚱ", "ᚲ", "ᚷ", "ᚹ",
+  "ᚺ", "ᚾ", "ᛁ", "ᛃ", "ᛇ", "ᛈ", "ᛉ", "ᛊ",
+  "ᛏ", "ᛒ", "ᛖ", "ᛗ", "ᛚ", "ᛜ", "ᛞ", "ᛟ"
+]);
 
 /**
  * The immutable default shape of a single track. Any stored value is merged
@@ -176,6 +251,25 @@ export const DEFAULT_TRACK = Object.freeze({
   title: "",
   /** One of {@link TRACK_MODES}. Decides how `current` is bounded and read. */
   mode: TRACK_MODES.PROGRESS,
+  /**
+   * One of {@link TRACK_DISPLAYS}. Decides how the track is drawn and nothing
+   * else — no value, bound or status anywhere in the module reads it.
+   */
+  display: TRACK_DISPLAYS.STANDARD,
+  /**
+   * Rune circle: per-seat glyph and label overrides, `{key, glyph, label}`.
+   * Empty means every seat uses its default stave from {@link RUNE_GLYPHS}.
+   *
+   * `key` is the seat's identity: the rung id on a threshold track, the ordinal
+   * index as a string on a progress one. Keying threshold seats by rung rather
+   * than by position is what stops every override below an inserted rung from
+   * silently sliding onto the wrong band.
+   *
+   * Kept while the track is drawn as standard, for the same reason the ladder
+   * is kept in progress mode: switching display is a display decision, and
+   * discarding what the GM wrote would be worse than carrying a few bytes.
+   */
+  runes: [],
   /** One of {@link TRACK_TYPES}. Per-track, never global. */
   type: TRACK_TYPES.POSITIVE,
   /** Current value. Never negative in progress mode; may be in threshold mode. */
@@ -262,6 +356,59 @@ export function progressPercent(current, target) {
 export function ringDashOffset(percent) {
   const clamped = Math.min(100, Math.max(0, Number(percent) || 0));
   return Number((RING.CIRCUMFERENCE * (1 - clamped / 100)).toFixed(3));
+}
+
+/** Two decimal places, which is well past what a percentage position needs. */
+const round2 = (n) => Number(n.toFixed(2));
+
+/**
+ * Where each seat of a rune circle sits, and where its rune hangs before it is
+ * earned. Both are percentages of the plate, ready to drop into a `left`/`top`
+ * pair, for the same reason the ring's dash offset is computed here: the
+ * template stays free of arithmetic and the figure scales purely through CSS.
+ *
+ * Seats run clockwise from twelve o'clock, so a circle reads the way a GM
+ * counts one.
+ *
+ * The adrift position is the seat's own angle pushed outward and knocked off
+ * true. The two offsets are derived from the seat index rather than from
+ * `Math.random`, which matters more than it looks: this runs on every render,
+ * on every client, and a random scatter would mean an unearned rune jumped to a
+ * new spot on every re-render and sat somewhere different on every player's
+ * screen.
+ *
+ * @param {number} count How many seats the circle has.
+ * @returns {Array<{index: number, left: number, top: number, adriftLeft: number,
+ *   adriftTop: number, rotation: number}>}
+ */
+export function runeSeats(count) {
+  const seats = Math.max(
+    0,
+    Math.min(CIRCLE.MAX_POSITIONS, Math.floor(Number(count) || 0))
+  );
+  const radians = Math.PI / 180;
+  const list = [];
+
+  for (let index = 0; index < seats; index += 1) {
+    const angle = (-90 + (index * 360) / seats) * radians;
+    // Coprime multipliers against the moduli, so short ladders still get a
+    // spread rather than every seat landing on the same offset.
+    const wobble = (((index * 37) % 19) - 9) * radians;
+    const stray = ((index * 53) % 7) - 3;
+    const adriftAngle = angle + wobble;
+    const adriftRadius = CIRCLE.ADRIFT_RADIUS + stray;
+
+    list.push({
+      index,
+      left: round2(50 + CIRCLE.SEAT_RADIUS * Math.cos(angle)),
+      top: round2(50 + CIRCLE.SEAT_RADIUS * Math.sin(angle)),
+      adriftLeft: round2(50 + adriftRadius * Math.cos(adriftAngle)),
+      adriftTop: round2(50 + adriftRadius * Math.sin(adriftAngle)),
+      // Tilt, so an unearned rune reads as out of order and not merely far out.
+      rotation: ((index * 29) % 31) - 15
+    });
+  }
+  return list;
 }
 
 /**

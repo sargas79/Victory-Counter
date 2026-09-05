@@ -15,9 +15,11 @@
  */
 
 import {
+  CIRCLE,
   LIMITS,
   MODULE_ID,
   RING,
+  TRACK_DISPLAYS,
   TRACK_MODES,
   TRACK_TYPES,
   clampInt
@@ -40,6 +42,7 @@ import {
 } from "../state.js";
 import { trackCardBase, trackDisplayName } from "../track-view.js";
 import { buildThresholdView } from "../threshold-view.js";
+import { buildRuneView, runeSeatCount, usesRuneCircle } from "../rune-view.js";
 import { clampToMinimum, refitToViewport } from "./window-fit.js";
 
 const { ApplicationV2, DialogV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -81,6 +84,7 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
       toggleAnnounce: this.onToggleAnnounce,
       toggleThresholdAnnounce: this.onToggleThresholdAnnounce,
       editThresholds: this.onEditThresholds,
+      editRunes: this.onEditRunes,
       moveTrack: this.onMove,
       undoChange: this.onUndo
     }
@@ -108,10 +112,26 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
         announcingThresholds: track.announceThresholds !== false
       };
 
-      if (!threshold) return { ...base, threshold: false };
+      let card = { ...base, threshold: false, circle: false };
 
       // The GM always sees the whole ladder; revealLadder only governs players.
-      return { ...base, ...buildThresholdView(track, { showLadder: true }) };
+      if (threshold) {
+        card = { ...card, ...buildThresholdView(track, { showLadder: true }) };
+      }
+      // Layered rather than branched, for the reason spelled out in the HUD:
+      // the circle replaces the rail, not the band badge around it.
+      if (usesRuneCircle(track)) {
+        card = { ...card, ...buildRuneView(track, { showLabels: true }) };
+      }
+
+      return {
+        ...card,
+        // Whether the *choice* is circle, which is not the same question as
+        // whether one is being drawn: the panel is where the GM finds out that
+        // the circle they asked for cannot be seated yet, and why.
+        wantsCircle: track.display === TRACK_DISPLAYS.CIRCLE,
+        seatCount: runeSeatCount(track)
+      };
     });
 
     return {
@@ -121,6 +141,10 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
       atMax: tracks.length >= LIMITS.MAX_TRACKS,
       canUndo: hasUndo(),
       limits: LIMITS,
+      // Named for what it holds rather than `circle`, which each track already
+      // uses for "is this one being drawn as a circle". Two different questions
+      // one `../` apart would have been a trap for the next edit.
+      circleLimits: CIRCLE,
       defaults: {
         // Seeds the "add track" fields. Mirrors the worked example in the README
         // (start 6 inside a 0-12 range) so a first threshold track is usable
@@ -139,6 +163,16 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
           label: game.i18n.localize("PVC.Mode.Threshold")
         }
       ],
+      displays: [
+        {
+          value: TRACK_DISPLAYS.STANDARD,
+          label: game.i18n.localize("PVC.Display.Standard")
+        },
+        {
+          value: TRACK_DISPLAYS.CIRCLE,
+          label: game.i18n.localize("PVC.Display.Circle")
+        }
+      ],
       types: [
         {
           value: TRACK_TYPES.POSITIVE,
@@ -153,19 +187,29 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
   }
 
   /**
-   * The mode/bound fields shared by the "add track" form and each track card.
+   * The fields that say how a track is shaped and how it is drawn, shared by the
+   * "add track" form and by each track card.
+   *
+   * `display` rides along with the mode fields rather than getting a reader of
+   * its own because it is the same kind of field — one select the GM sets once
+   * and rarely revisits — and because putting it here is what guarantees the
+   * add-track form and every track card read it identically.
    *
    * `min` and `max` are read before `start` but not clamped against each other
    * here: sanitization owns that ordering, and doing it twice would let the two
    * disagree about which field wins.
    *
    * @param {(name: string) => HTMLElement|null} field Field lookup for this form.
-   * @returns {{mode: string, start: number, min: number, max: number}}
+   * @returns {{mode: string, display: string, start: number, min: number, max: number}}
    */
-  static readModeFields(field) {
+  static readShapeFields(field) {
     const mode = field("mode")?.value;
+    const display = field("display")?.value;
     return {
       mode: Object.values(TRACK_MODES).includes(mode) ? mode : TRACK_MODES.PROGRESS,
+      display: Object.values(TRACK_DISPLAYS).includes(display)
+        ? display
+        : TRACK_DISPLAYS.STANDARD,
       start: clampInt(field("start")?.value, LIMITS.MIN_VALUE, LIMITS.MAX_VALUE),
       min: clampInt(field("min")?.value, LIMITS.MIN_VALUE, LIMITS.MAX_VALUE),
       max: clampInt(field("max")?.value, LIMITS.MIN_VALUE, LIMITS.MAX_VALUE)
@@ -189,7 +233,7 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
       type: Object.values(TRACK_TYPES).includes(type) ? type : TRACK_TYPES.POSITIVE,
       visibleToPlayers: field("visibleToPlayers")?.checked === true,
       revealLadder: field("revealLadder")?.checked === true,
-      ...VictoryCounterPanel.readModeFields(field)
+      ...VictoryCounterPanel.readShapeFields(field)
     };
   }
 
@@ -213,7 +257,7 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
       type: Object.values(TRACK_TYPES).includes(type) ? type : TRACK_TYPES.POSITIVE,
       visibleToPlayers: field("visibleToPlayers")?.checked === true,
       revealLadder: field("revealLadder")?.checked === true,
-      ...VictoryCounterPanel.readModeFields(field)
+      ...VictoryCounterPanel.readShapeFields(field)
     };
   }
 
@@ -236,32 +280,42 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
   /** @override */
   _onRender(context, options) {
     super._onRender(context, options);
-    this.#bindModeSwitches();
+    this.#bindShapeSwitches();
     // Adding or removing a track changes the natural height of the grid; refit
     // so the window uses the space it needs and no more.
     this.#refit();
   }
 
   /**
-   * Show only the fields that belong to the currently selected mode.
+   * Show only the fields that belong to the currently selected mode and display.
    *
    * Target is meaningless on a threshold track and start/min/max are meaningless
    * on a progress one, so leaving both sets on screen would invite the GM to
-   * fill in fields that are then silently ignored. The swap is a data attribute
-   * plus CSS rather than a re-render, so it happens instantly and does not
-   * discard anything else already typed into the form.
+   * fill in fields that are then silently ignored. The rune editor is the same
+   * argument for the display select: it configures seats that a standard
+   * readout does not have.
+   *
+   * The swap is a data attribute plus CSS rather than a re-render, so it happens
+   * instantly and does not discard anything else already typed into the form.
    */
-  #bindModeSwitches() {
+  #bindShapeSwitches() {
     const root = this.element;
     if (!root) return;
 
-    for (const select of root.querySelectorAll("[data-mode-select]")) {
-      const scope = select.closest("[data-mode-scope]");
-      if (!scope) continue;
-      select.addEventListener("change", () => {
-        scope.dataset.mode = select.value;
-      });
-    }
+    // Both selects live inside the same `[data-mode-scope]` element and write
+    // their own attribute on it, so a card can be styled by either or by both.
+    const bind = (selector, attribute) => {
+      for (const select of root.querySelectorAll(selector)) {
+        const scope = select.closest("[data-mode-scope]");
+        if (!scope) continue;
+        select.addEventListener("change", () => {
+          scope.dataset[attribute] = select.value;
+        });
+      }
+    };
+
+    bind("[data-mode-select]", "mode");
+    bind("[data-display-select]", "display");
   }
 
   /**
@@ -415,6 +469,27 @@ export class VictoryCounterPanel extends HandlebarsApplicationMixin(ApplicationV
       await ThresholdEditor.open(id);
     } catch (err) {
       console.error(`[${MODULE_ID}] The threshold editor could not be loaded.`, err);
+      ui.notifications.error(game.i18n.localize("PVC.Notify.UILoadFailed"));
+    }
+  }
+
+  /**
+   * Open the rune editor for this track.
+   *
+   * Loaded on demand for the same reason as the ladder editor above: an editor
+   * that fails to parse must cost the GM that editor, not the control panel.
+   *
+   * @this {VictoryCounterPanel}
+   * @param {PointerEvent} event
+   * @param {HTMLElement}  target
+   */
+  static async onEditRunes(event, target) {
+    const id = target.dataset.id;
+    try {
+      const { RuneEditor } = await import("./rune-editor.js");
+      await RuneEditor.open(id);
+    } catch (err) {
+      console.error(`[${MODULE_ID}] The rune editor could not be loaded.`, err);
       ui.notifications.error(game.i18n.localize("PVC.Notify.UILoadFailed"));
     }
   }

@@ -1436,3 +1436,307 @@
 .pvc-chat-card.pvc-threshold-card.pvc-tone-positive { --pvc-tone: #5d5294; }
 .pvc-chat-card.pvc-threshold-card.pvc-tone-neutral  { --pvc-tone: #595d6c; }
 .pvc-chat-card.pvc-threshold-card.pvc-tone-negative { --pvc-tone: #b4402c; }
+
+/* ==========================================================================
+   Rune circle — the second way to draw a track
+   ==========================================================================
+
+   A ring of seats with a rune for each. An unearned rune hangs outside the
+   ring, dimmed and tilted; earning it slides the same element inward, straightens
+   it and lights it up. Both positions are computed in JS (`runeSeats`) and
+   arrive as inline `left`/`top` percentages, so one CSS transition carries the
+   rune the whole way and the figure scales purely from the plate's own width.
+
+   State is never carried by colour alone. A seated rune differs from an adrift
+   one in position, tilt, opacity, weight and size, the count is spelled out in
+   digits at the centre, and every rune names itself in a tooltip.
+
+   The staves are text. The font stack below is what decides whether they render
+   at all on a given machine, so it names the faces that actually carry the
+   Runic block before falling back — and any seat the GM cares about can be
+   overridden with a glyph their own system does have.
+   ========================================================================== */
+
+.pvc .pvc-runes {
+  /* In `cqw` — 1% of the plate — rather than a plain percentage, so the glyph
+     inside a rune can be sized from the same number. A crowded circle then
+     shrinks its text along with its seats instead of overflowing them. */
+  --pvc-rune-size: 15cqw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+/* The square the whole figure is laid out in. `container-type` is what lets the
+   runes and the centre readout size themselves in `cqw`, so the circle stays in
+   proportion at every HUD scale and card width. */
+.pvc .pvc-runes-plate {
+  position: relative;
+  width: 100%;
+  max-width: 168px;
+  aspect-ratio: 1;
+  container-type: inline-size;
+}
+
+/* --- The plate itself ---------------------------------------------------- */
+
+/* Three stacked decorations, all inert: the outer rim the runes drift around,
+   the seat ring they settle onto, and the glow at the centre. */
+.pvc .pvc-runes-glow,
+.pvc .pvc-runes-rim,
+.pvc .pvc-runes-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.pvc .pvc-runes-rim {
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--pvc-hairline);
+}
+
+.pvc .pvc-runes-ring {
+  /* Twice the seat radius: the ring passes through the seats themselves. */
+  width: 68%;
+  height: 68%;
+  border: 1px solid var(--pvc-neutral-800);
+}
+
+.pvc .pvc-runes-glow {
+  width: 44%;
+  height: 44%;
+  background: radial-gradient(
+    circle,
+    rgba(145, 132, 217, 0.34) 0%,
+    rgba(145, 132, 217, 0.10) 45%,
+    transparent 70%
+  );
+  opacity: 0.35;
+  transition: opacity 240ms ease;
+}
+
+.pvc .pvc-tone-negative .pvc-runes-glow,
+.pvc .pvc-negative .pvc-runes-glow {
+  background: radial-gradient(
+    circle,
+    rgba(239, 127, 110, 0.32) 0%,
+    rgba(239, 127, 110, 0.10) 45%,
+    transparent 70%
+  );
+}
+
+/* --- The centre readout -------------------------------------------------- */
+
+.pvc .pvc-runes-core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  translate: -50% -50%;
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  font-family: var(--pvc-mono);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.pvc .pvc-runes-value {
+  font-size: clamp(15px, 20cqw, 30px);
+  font-weight: 600;
+  color: var(--pvc-text);
+}
+
+.pvc .pvc-negative .pvc-runes-value { color: var(--pvc-negative); }
+.pvc .pvc-threshold .pvc-runes-value { color: var(--pvc-tone, var(--pvc-text)); }
+
+.pvc .pvc-runes-divider,
+.pvc .pvc-runes-target {
+  font-size: clamp(9px, 11cqw, 15px);
+  color: var(--pvc-neutral-500);
+}
+
+/* --- A single rune ------------------------------------------------------- */
+
+.pvc .pvc-rune {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: var(--pvc-rune-size);
+  height: var(--pvc-rune-size);
+  min-width: 10px;
+  min-height: 10px;
+  /* `left`/`top` are the seat's centre, so the element is pulled back by half
+     its own size; the tilt rides alongside. */
+  translate: -50% -50%;
+  rotate: var(--pvc-rune-tilt, 0deg);
+  border-radius: 50%;
+  font-family: "Segoe UI Symbol", "Segoe UI Historic", "Noto Sans Runic",
+    "Junicode", "Apple Symbols", var(--pvc-font);
+  font-size: clamp(8px, calc(var(--pvc-rune-size) * 0.7), 18px);
+  line-height: 1;
+  user-select: none;
+  /* The slide. Everything a rune changes on being earned moves together. */
+  transition:
+    left 420ms cubic-bezier(0.22, 0.9, 0.3, 1),
+    top 420ms cubic-bezier(0.22, 0.9, 0.3, 1),
+    rotate 420ms cubic-bezier(0.22, 0.9, 0.3, 1),
+    scale 420ms cubic-bezier(0.22, 0.9, 0.3, 1),
+    opacity 320ms ease,
+    color 320ms ease,
+    text-shadow 320ms ease;
+}
+
+/* Not yet earned: outside the ring, tilted, cooler and a shade smaller.
+   Dimmed, but deliberately not to the edge of legibility — the runes still to
+   come are half of what the circle is telling the table, and a player who
+   cannot make them out only learns how far along they are, never how far is
+   left. Distance, tilt and size carry the state; colour only reinforces it. */
+.pvc .pvc-rune-adrift {
+  color: var(--pvc-neutral-500);
+  opacity: 0.75;
+  scale: 0.86;
+}
+
+/* Earned: on the ring, upright, lit and a touch heavier. The weight matters as
+   much as the colour — on a neutral band the two greys are close, and the
+   circle has to stay readable for someone who cannot tell them apart at all. */
+.pvc .pvc-rune-seated {
+  color: var(--pvc-accent-300);
+  opacity: 1;
+  font-weight: 600;
+  text-shadow: 0 0 10px rgba(145, 132, 217, 0.55);
+}
+
+.pvc .pvc-negative .pvc-rune-seated {
+  color: var(--pvc-negative);
+  text-shadow: 0 0 10px var(--pvc-negative-glow);
+}
+
+/* A seated rune on a threshold circle answers to its own band's tone, which is
+   the same colour the badge and the kicker beside it already carry. */
+.pvc .pvc-rune-seated.pvc-tone-positive,
+.pvc .pvc-rune-seated.pvc-tone-negative {
+  color: var(--pvc-tone);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--pvc-tone) 45%, transparent);
+}
+
+/* Neutral is the exception. The tone token for it is a mid grey, which lands
+   within a shade of the grey an *unearned* rune already uses — so a status-quo
+   band would have drawn its seated runes as if they were still adrift. Full
+   text colour is what neutral actually means here: in place, and claiming
+   nothing about which direction that is. */
+.pvc .pvc-rune-seated.pvc-tone-neutral {
+  color: var(--pvc-text);
+  text-shadow: 0 0 10px rgba(233, 233, 237, 0.32);
+}
+
+/* The leading edge: the rune just earned, or the band the track sits in. Given
+   a ring of its own as well as a brighter glyph, so it is still findable when
+   two tone colours sit close together. */
+.pvc .pvc-rune-active {
+  background: rgba(145, 132, 217, 0.12);
+  box-shadow: 0 0 0 1px currentcolor;
+  font-weight: 600;
+  scale: 1.08;
+}
+
+/* Completion: every seat is taken, so the whole plate lifts rather than any one
+   rune. Paired with the "Complete" badge the card already carries. */
+.pvc .pvc-runes-complete .pvc-runes-ring { border-color: var(--pvc-accent-700); }
+.pvc .pvc-runes-complete .pvc-runes-glow { opacity: 0.85; }
+
+/* Crowded circles. The seat ring is 68cqw across, so its circumference is about
+   214cqw and each of n seats gets 214/n of it. Past a dozen seats a 15cqw rune
+   is wider than its own share and neighbours start to touch, so the tiers below
+   keep every rune inside the arc it owns. */
+.pvc .pvc-runes[data-seats="13"],
+.pvc .pvc-runes[data-seats="14"],
+.pvc .pvc-runes[data-seats="15"],
+.pvc .pvc-runes[data-seats="16"] { --pvc-rune-size: 12cqw; }
+
+.pvc .pvc-runes[data-seats="17"],
+.pvc .pvc-runes[data-seats="18"],
+.pvc .pvc-runes[data-seats="19"],
+.pvc .pvc-runes[data-seats="20"] { --pvc-rune-size: 10cqw; }
+
+.pvc .pvc-runes[data-seats="21"],
+.pvc .pvc-runes[data-seats="22"],
+.pvc .pvc-runes[data-seats="23"],
+.pvc .pvc-runes[data-seats="24"] { --pvc-rune-size: 8cqw; }
+
+/* The band name under a threshold circle is a caption for the plate above it,
+   not the next item down the card, so it closes the card's usual gap. */
+.pvc .pvc-card-circle .pvc-runes + .pvc-kicker {
+  margin-top: -6px;
+  align-self: center;
+  text-align: center;
+}
+
+/* --- In the GM control panel -------------------------------------------- */
+
+/* The panel draws the same figure at card size, where it shares a column with a
+   full configuration form and has no business being the tallest thing in it. */
+.pvc-panel .pvc-runes-compact { display: flex; justify-content: center; }
+.pvc-panel .pvc-runes-compact .pvc-runes-plate { max-width: 128px; }
+
+/* Seat configuration belongs to a circle, so it is hidden while the display
+   select says otherwise — the same mechanism the mode groups above use, on a
+   second attribute, and hiding rather than removing for the same reason: the
+   fields stay in the DOM, so switching display twice loses nothing. */
+.pvc-panel [data-mode-scope]:not([data-display="circle"]) [data-display-group="circle"] {
+  display: none;
+}
+
+/* ==========================================================================
+   Rune editor — one row per seat
+   ==========================================================================
+
+   Shares the ladder editor's window chrome (`pvc-panel`), so only the row
+   layout is stated here: a preview of the seat's default stave, then the two
+   optional fields that override it.
+   ========================================================================== */
+
+.pvc-rune-editor .pvc-rune-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--pvc-hairline);
+}
+
+.pvc-rune-editor .pvc-rune-row:first-of-type { border-top: none; }
+
+.pvc-rune-editor .pvc-rune-preview {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  margin-top: 16px;
+  border: 1px solid var(--pvc-neutral-800);
+  border-radius: 50%;
+  font-family: "Segoe UI Symbol", "Segoe UI Historic", "Noto Sans Runic",
+    "Junicode", "Apple Symbols", var(--pvc-font);
+  font-size: 15px;
+  color: var(--pvc-accent-300);
+}
+
+.pvc-rune-editor .pvc-rune-fields { flex: 1; min-width: 0; }
+
+.pvc-rune-editor .pvc-rune-caption {
+  display: block;
+  margin-bottom: 2px;
+  font: 500 9px/1.6 var(--pvc-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pvc-neutral-500);
+}
+
+/* The glyph field holds one character in practice; giving it the whole row
+   would suggest it takes a word. */
+.pvc-rune-editor .pvc-rune-row .pvc-field-narrow { flex: 0 0 84px; }
