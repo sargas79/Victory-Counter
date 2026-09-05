@@ -23,6 +23,7 @@
 import { LIMITS, MODULE_ID } from "../constants.js";
 import { getTrack, setTrackRunes } from "../state.js";
 import { runeSeatCount, runeSeatOutline, usesRuneCircle } from "../rune-view.js";
+import { trackDisplayName } from "../track-view.js";
 import { clampToMinimum, refitToViewport } from "./window-fit.js";
 
 const { ApplicationV2, HandlebarsApplicationMixin } = foundry.applications.api;
@@ -84,7 +85,7 @@ export class RuneEditor extends HandlebarsApplicationMixin(ApplicationV2) {
   get title() {
     const track = getTrack(this.trackId);
     return game.i18n.format("PVC.Circle.EditorTitleFor", {
-      title: track?.title || game.i18n.localize("PVC.DefaultTitle")
+      title: trackDisplayName(track)
     });
   }
 

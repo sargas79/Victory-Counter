@@ -28,6 +28,7 @@ import {
   runeSeats
 } from "./constants.js";
 import { bandDisplayName } from "./threshold-view.js";
+import { trackDisplayName } from "./track-view.js";
 
 /**
  * How many seats a track's circle would have.
@@ -136,7 +137,7 @@ export function buildRuneView(track, { showLabels = false } = {}) {
   const threshold = track.mode === TRACK_MODES.THRESHOLD;
   const outline = runeSeatOutline(track);
   const geometry = runeSeats(outline.length);
-  const displayTitle = track.title || game.i18n.localize("PVC.DefaultTitle");
+  const displayTitle = trackDisplayName(track);
 
   // A progress track fills its seats in order, so how many are taken is the
   // whole story. Overshoot has nowhere to go — past the target every seat is
