@@ -82,13 +82,14 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   A seat the GM has named carries a mark, the same promise the step strip makes
   about a labelled pip, and the name of the seat the circle is standing on is
   printed under the plate. A step seat takes that name from the step editor, the
-  way a threshold seat takes its own from its rung — seat 3 of a step circle *is*
-  step 3 — so naming a step names its rune, and a mark whose name is still
-  withheld is drawn hollow exactly as the pip strip draws it. Which seats mean something, and what the current one
-  means, are therefore readable without hovering every rune in turn; the seat
-  names still ride in the tooltips as well. A threshold circle is left alone:
-  every one of its seats stands for a rung and so carries a name by construction,
-  and the band kicker beside the plate already names the one that matters.
+  way a threshold seat takes its own from its rung — seat 3 of a step circle
+  *is* step 3 — so naming a step names its rune, and a mark whose name is still
+  withheld is drawn hollow exactly as the pip strip draws it. Which seats mean
+  something, and what the current one means, are therefore readable without
+  hovering every rune in turn; the seat names still ride in the tooltips as
+  well. A threshold circle is left alone: every one of its seats stands for a
+  rung and so carries a name by construction, and the band kicker beside the
+  plate already names the one that matters.
 
   State is never carried by colour alone: a seated rune differs from an adrift
   one in position, tilt, weight, size and opacity, the count is spelled out in
