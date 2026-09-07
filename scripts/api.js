@@ -13,6 +13,7 @@ import {
   TRACK_TYPES,
   logError,
   resolveBand,
+  resolveStep,
   warn
 } from "./constants.js";
 import {
@@ -27,8 +28,10 @@ import {
   setTrackCurrent,
   setTrackDisplay,
   setTrackRunes,
+  setTrackSteps,
   setTrackThresholds,
   setTrackType,
+  toggleStepAnnounce,
   toggleThresholdAnnounce,
   toggleTrackAnnounce,
   toggleTrackVisibility,
@@ -95,6 +98,9 @@ function deprecate(oldName, newName) {
  * @property {(id: string, thresholds: object[]) => Promise<object|null>} setThresholds
  * @property {(id: string) => object|null}                           getBand
  * @property {(id: string) => Promise<object|null>}                  toggleThresholdAnnounce
+ * @property {(id: string, labels: object[]) => Promise<object|null>} setSteps
+ * @property {(id: string) => object|null}                           getStep
+ * @property {(id: string) => Promise<object|null>}                  toggleStepAnnounce
  * @property {(id: string, display: string) => Promise<object|null>} setDisplay
  * @property {(id: string, runes: object[]) => Promise<object|null>} setRunes
  * @property {(id: string, direction: -1|1) => Promise<object[]|null>} move
@@ -193,6 +199,46 @@ export const api = {
 
   /** Flip whether a threshold track announces band changes in chat. */
   toggleThresholdAnnounce: (id) => toggleThresholdAnnounce(id),
+
+  /* ------------------------------------------ */
+  /*  Step tracks                               */
+  /* ------------------------------------------ */
+
+  /**
+   * Replace a step track's named steps.
+   *
+   * Labels are `{value, label, description, announce}`; ids are generated for
+   * any that arrive without one. The list is sorted, deduplicated by value and
+   * capped on the way in, so a macro may pass them in any order. A label's
+   * `value` is the step it marks, from 1 up to the track's target — step 0 is
+   * the empty track and can never be reached.
+   *
+   * Writing the labels never posts a chat card — see `setTrackSteps`.
+   *
+   * @param {string} id
+   * @param {object[]} labels
+   */
+  setSteps: (id, labels) => setTrackSteps(id, labels),
+
+  /**
+   * The label sitting *exactly* on a step track's current value, or null when
+   * the track is between labels (or is not a step track at all).
+   *
+   * Deliberately not the analogue of {@link api.getBand}: a step label means
+   * something on its own number and nothing on the ones around it, so there is
+   * no "current label" to fall back to once the track has moved past one.
+   *
+   * @param {string} id
+   * @returns {object|null}
+   */
+  getStep: (id) => {
+    const track = getTrack(id);
+    if (track?.mode !== TRACK_MODES.STEPS) return null;
+    return resolveStep(track.current, track.steps);
+  },
+
+  /** Flip whether a step track announces reaching a labelled step in chat. */
+  toggleStepAnnounce: (id) => toggleStepAnnounce(id),
 
   /* ------------------------------------------ */
   /*  Rune circle                               */

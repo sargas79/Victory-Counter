@@ -1,0 +1,60 @@
+{{!--
+  Chat summary posted when a step track's value changes, or when it reaches a
+  labelled step.
+
+  Distinct from chat-card.hbs because the headline of a step track is not the
+  distance to a target but which milestone the count has landed on: "4 / 6" says
+  far less than "The gate falls". Distinct from threshold-card.hbs because a
+  step label sits on one exact number and does not persist — a value between two
+  labels carries no label at all, and the card has to be able to say so by
+  simply not saying anything.
+
+  The reached line spells its direction out in words as well as in an arrow, so
+  nothing here depends on colour.
+--}}
+<div class="pvc-chat-card pvc-step-card pvc-{{track.status}}{{#if (eq track.type "negative")}} pvc-negative{{/if}}">
+  <header class="pvc-chat-header">
+    <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+    <span>{{#if track.title}}{{track.title}}{{else}}{{localize "PVC.DefaultTitle"}}{{/if}}</span>
+    {{#if stepLabel}}<span class="pvc-chat-step">{{stepLabel}}</span>{{/if}}
+  </header>
+
+  {{#if reason}}<p class="pvc-chat-reason">{{reason}}</p>{{/if}}
+
+  <p class="pvc-chat-progress">
+    <strong>{{track.current}} / {{track.target}}</strong>
+    {{#if delta}}<span class="pvc-chat-delta">({{numberFormat delta sign=true}})</span>{{/if}}
+  </p>
+
+  {{#if crossing}}
+  <div class="pvc-chat-crossing">
+    {{#if crossing.reached}}
+    <p class="pvc-crossing-line">
+      <i class="fa-solid {{#if crossing.rising}}fa-arrow-up{{else}}fa-arrow-down{{/if}}"
+         aria-hidden="true"></i>
+      {{#if crossing.rising}}
+      {{localize "PVC.Step.Reached"}}
+      {{else}}
+      {{localize "PVC.Step.BackAt"}}
+      {{/if}}
+      <span class="pvc-crossing-to">{{crossing.reached}}</span>
+    </p>
+    {{/if}}
+
+    {{#if crossing.passed.length}}
+    <p class="pvc-crossing-passed">
+      {{localize "PVC.Step.PassedThrough"}}
+      {{#each crossing.passed}}{{this}}{{#unless @last}}, {{/unless}}{{/each}}
+    </p>
+    {{/if}}
+  </div>
+  {{/if}}
+
+  {{#if stepDescription}}
+  <p class="pvc-chat-step-description">{{stepDescription}}</p>
+  {{/if}}
+
+  {{#if (eq track.status "complete")}}
+  <div class="pvc-chat-result">{{statusLabel}}</div>
+  {{/if}}
+</div>

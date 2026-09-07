@@ -269,6 +269,14 @@ export function migrateTrackData(raw) {
     ? raw.mode
     : TRACK_MODES.PROGRESS;
 
+  // --- v4 -> v5 -----------------------------------------------------------
+  // Additive in exactly the same way as v3 -> v4, and needing no code of its
+  // own. `mode` is already validated against TRACK_MODES just above, so "steps"
+  // is accepted the moment the constant exists, and the four new fields
+  // (`steps`, `step`, `announceSteps`, `revealSteps`) are backfilled from
+  // DEFAULT_TRACK during sanitization. No field is reinterpreted and no stored
+  // value changes meaning: a v4 record comes back as the same track it was.
+
   // Polarity: honour an explicitly stored value, otherwise default to positive.
   // Applied at every version so a hand-edited or partially written record still
   // lands on a valid polarity.

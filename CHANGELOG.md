@@ -7,6 +7,47 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **Step tracks.** A third mode, for the countdown clock with named milestones
+  that neither of the other two covers. A step track counts to a target exactly
+  as a *Progress* track does — it completes there, respects **Allow Progress
+  Beyond Target**, resets to zero and carries a polarity — but it is drawn as
+  discrete pips, and the GM may name up to 10 individual steps: step 3 is *The
+  alarm is raised*, step 6 is *The gate falls*, and the numbers between them mean
+  nothing in particular.
+
+  A step label marks its **exact** step and does not stick. At 3 the card names
+  the step; at 4 it names nothing, because nothing in particular happens at 4.
+  That is the whole distinction from a threshold rung, which owns every number
+  from itself up to the next rung — the behaviour that is wanted when a name
+  should persist already exists, as *Thresholds*.
+
+  Above 20 steps the pip strip would be thinner than the gaps between its pips,
+  so the readout falls back to the continuous bar with a tick at each named step
+  and a 60-step clock stays legible. Labelled pips are never distinguished by
+  colour alone: a reached pip is solid, a named one carries a mark, and the
+  current one is outlined.
+- **Step announcements.** Landing on a named step can post a chat card naming the
+  step, quoting its description, and listing any named steps travelled over in a
+  single large jump. Gated exactly the way band changes are, and independently of
+  them: the world setting **Post Progress to Chat** is still the master switch,
+  the per-track **Announce Step Labels** covers arrivals, and a per-label
+  **Announce This Step** lets one milestone pass without comment. Stepping back
+  onto a named step says so; stepping back onto an unnamed one says nothing.
+  Rewriting the labels announces nothing — naming the milestones is not the same
+  event as reaching one.
+- **Step label editor.** Its own window per track, reached from **Edit Step
+  Labels** on the control panel's track card. Structurally the ladder editor, and
+  deliberately so: it is the same row of fields, and the two now share both their
+  styling and the code that scrapes a half-typed row back out of the DOM, so they
+  cannot drift apart. Rows carry no tone badge — tone is measured against a
+  threshold track's starting value, which a step track does not have — and say
+  whether the step has been reached instead.
+- **Show Players Every Label** (per track, off by default). With it off, players
+  see the names of steps the track has already reached — a milestone the party
+  has hit is not a secret — and an unnamed mark for the ones ahead.
+- `api.setSteps()`, `api.getStep()` and `api.toggleStepAnnounce()`, plus
+  `api.MODES.STEPS`. `getStep()` is an exact match, never a walk: between two
+  labels it returns `null`.
 - **Rune circles.** A second way to draw a track, chosen per track in the new
   **Display** field beside **Mode**. The track is drawn as a ring of seats with a
   rune for each: they all begin adrift outside the circle — dim, tilted,

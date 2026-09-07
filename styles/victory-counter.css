@@ -1269,12 +1269,272 @@
   box-shadow: none;
 }
 
+/* --------------------------------------------------------------------------
+   Step tracks — the pip strip
+   -------------------------------------------------------------------------- */
+
+/* Nothing here is distinguished by colour alone. A reached step is *solid*
+   rather than merely brighter, a labelled step carries a diamond mark, and the
+   current step is outlined — so the strip survives a greyscale display, and the
+   card beside it names the current step in words either way. */
+
+.pvc .pvc-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+}
+
+.pvc .pvc-step-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* `flex: 1 1 10px` with a floor rather than a fixed width: on a narrow HUD a
+   20-step strip wraps onto a second line instead of forcing the card wider than
+   its grid column, and on a wide one the pips spread to fill the space. */
+.pvc .pvc-step-pip {
+  position: relative;
+  flex: 1 1 10px;
+  min-width: 10px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--pvc-neutral-900);
+  box-shadow: inset 0 0 0 1px var(--pvc-hairline);
+  transition: background 220ms ease;
+}
+
+.pvc .pvc-step-filled {
+  background: var(--pvc-accent);
+  box-shadow: 0 0 8px rgba(145, 132, 217, 0.4);
+}
+
+/* The mark, not the colour, is what says "this step is named". */
+.pvc .pvc-step-mark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  margin: -2.5px 0 0 -2.5px;
+  border-radius: 1px;
+  transform: rotate(45deg);
+  background: var(--pvc-accent-300);
+}
+
+.pvc .pvc-step-filled .pvc-step-mark { background: var(--pvc-bg); }
+
+/* A label the reader may not name yet still shows that it *is* a milestone —
+   hiding the mark as well would make the strip lie about its own shape — but it
+   is drawn hollow, so "there is something here" and "here is what it is" stay
+   visibly different. */
+.pvc .pvc-step-hidden .pvc-step-mark {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--pvc-neutral-500);
+}
+
+.pvc .pvc-step-current {
+  outline: 2px solid var(--pvc-accent-300);
+  outline-offset: 1px;
+}
+
+/* Negative polarity, on the strip as everywhere else, is a second cue on top of
+   the arrow icon and the written word — never the only one. */
+.pvc .pvc-negative .pvc-step-filled {
+  background: var(--pvc-negative);
+  box-shadow: 0 0 8px var(--pvc-negative-glow);
+}
+
+.pvc .pvc-negative .pvc-step-current { outline-color: var(--pvc-negative); }
+
+/* --- Fallback bar, above MAX_STEP_PIPS steps ---------------------------- */
+
+/* Its own element rather than the `.pvc-track` bar: those rules are scoped to
+   `#pvc-overlay`, so the control panel would not get them, and their ID
+   specificity would beat any plain `.pvc …` override — including the one that
+   has to undo their `overflow: hidden`, which would otherwise clip the ticks
+   this readout exists to draw. Styled once here for both surfaces. */
+.pvc .pvc-step-rail {
+  position: relative;
+  height: 8px;
+  min-width: 0;
+  border-radius: 999px;
+  background: var(--pvc-neutral-900);
+  box-shadow: inset 0 0 0 1px var(--pvc-hairline);
+}
+
+.pvc .pvc-step-rail-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--pvc-accent);
+  transition: width 220ms ease;
+}
+
+.pvc .pvc-negative .pvc-step-rail-fill { background: var(--pvc-negative); }
+
+.pvc .pvc-step-tick {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--pvc-neutral-500);
+}
+
+.pvc .pvc-step-tick-reached { background: var(--pvc-accent-300); }
+
+.pvc .pvc-step-tick-current {
+  top: -5px;
+  bottom: -5px;
+  width: 3px;
+  margin-left: -1.5px;
+}
+
+/* Hollow, for the same reason a hidden pip's mark is. */
+.pvc .pvc-step-tick.pvc-step-hidden {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--pvc-neutral-600);
+}
+
+/* --- Caption ------------------------------------------------------------ */
+
+.pvc .pvc-step-caption {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  color: var(--pvc-neutral-600);
+}
+
+.pvc .pvc-step-next {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--pvc-neutral-500);
+}
+
+/* --- HUD card ----------------------------------------------------------- */
+
+#pvc-overlay .pvc-card.pvc-stepped .pvc-step-kicker {
+  color: var(--pvc-accent-300);
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  /* A step name is a phrase, not a percentage; let it wrap rather than clip. */
+  white-space: normal;
+  text-align: right;
+}
+
+#pvc-overlay .pvc-card.pvc-stepped.pvc-negative .pvc-step-kicker { color: var(--pvc-negative); }
+
+#pvc-overlay .pvc-compact-step {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--pvc-accent-300);
+}
+
+#pvc-overlay .pvc-compact.pvc-negative .pvc-compact-step { color: var(--pvc-negative); }
+
+/* --- Control panel ------------------------------------------------------ */
+
+.pvc-panel .pvc-track-card.pvc-stepped .pvc-steps { margin-bottom: 6px; }
+
+/* --- Label editor ------------------------------------------------------- */
+
+/* The step editor carries `pvc-threshold-editor` as well as its own class, so it
+   inherits the whole row layout and only the two genuine differences are stated
+   here. Both classes are named so these win over the shared rule regardless of
+   where the two blocks end up in the file.
+
+   A row states its own state in words as well; the tint is the second cue. */
+.pvc-step-editor .pvc-threshold-row.pvc-step-row {
+  border-left-color: var(--pvc-neutral-700);
+}
+
+.pvc-step-editor .pvc-threshold-row.pvc-step-row-reached {
+  border-left-color: var(--pvc-accent);
+}
+
+.pvc-step-editor .pvc-step-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--pvc-neutral-500);
+}
+
+.pvc-step-editor .pvc-step-row-reached .pvc-step-state { color: var(--pvc-accent-300); }
+
+/* A row the target has left behind. Stated in words and with a warning icon as
+   well, so the tint is the second cue rather than the only one. */
+.pvc-step-editor .pvc-threshold-row.pvc-step-row-beyond {
+  border-left-color: var(--pvc-negative);
+}
+
+.pvc-step-editor .pvc-step-state-beyond { color: var(--pvc-negative); }
+
+/* --- Chat card ---------------------------------------------------------- */
+
+.pvc-chat-card.pvc-step-card .pvc-chat-step {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.pvc-chat-card.pvc-step-card .pvc-chat-crossing {
+  margin: 6px 0 4px;
+  padding: 5px 8px;
+  border-radius: var(--pvc-radius-sm, 4px);
+  background: rgba(145, 132, 217, 0.12);
+  border-left: 3px solid #9184d9;
+}
+
+.pvc-chat-card.pvc-step-card .pvc-crossing-line {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pvc-chat-card.pvc-step-card .pvc-crossing-passed {
+  margin: 3px 0 0;
+  font-size: 11px;
+  opacity: 0.75;
+}
+
+.pvc-chat-card.pvc-step-card .pvc-chat-step-description {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 /* --- Control panel ------------------------------------------------------ */
 
 /* Only the selected mode's fields are shown. The others stay in the DOM so the
-   form readers still find them and a mode switched twice loses nothing. */
-.pvc-panel [data-mode-scope][data-mode="progress"] [data-mode-group="threshold"],
-.pvc-panel [data-mode-scope][data-mode="threshold"] [data-mode-group="progress"] {
+   form readers still find them and a mode switched twice loses nothing.
+
+   Each group declares the modes it belongs to as a space-separated list, matched
+   with `~=`, and anything that does not list the active mode is hidden. Written
+   this way rather than as a pair-per-combination because the pairs grow with the
+   square of the mode count: the target/type row belongs to both progress and
+   steps, and would otherwise have to be duplicated into two blocks that could
+   then disagree with each other. */
+.pvc-panel [data-mode-scope][data-mode="progress"]  [data-mode-group]:not([data-mode-group~="progress"]),
+.pvc-panel [data-mode-scope][data-mode="threshold"] [data-mode-group]:not([data-mode-group~="threshold"]),
+.pvc-panel [data-mode-scope][data-mode="steps"]     [data-mode-group]:not([data-mode-group~="steps"]) {
   display: none;
 }
 

@@ -1,7 +1,7 @@
 {
   "id": "victory-counter",
   "title": "Victory Counter",
-  "description": "Shared, always-visible tracks for any game system. Progress tracks count up to a target and complete there. Threshold tracks start at a value the GM sets, move up and down, and take their meaning from GM-described bands that can announce themselves in chat when crossed. Every player sees the same live state on screen. System-agnostic: the module stores its entire state in its own settings and never reads or writes any world document.",
+  "description": "Shared, always-visible tracks for any game system. Progress tracks count up to a target and complete there. Threshold tracks start at a value the GM sets, move up and down, and take their meaning from GM-described bands that can announce themselves in chat when crossed. Step tracks are a countdown clock drawn as discrete pips, on which the GM can name individual steps that announce themselves the moment the count lands on them. Step tracks are a countdown clock drawn as discrete pips, on which the GM can name individual steps that announce themselves the moment the count lands on them. Every player sees the same live state on screen. System-agnostic: the module stores its entire state in its own settings and never reads or writes any world document.",
   "version": "2.1.0",
   "authors": [
     {

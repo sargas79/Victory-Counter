@@ -30,12 +30,14 @@ import {
   adjustTrack,
   getVisibleTracks,
   hasUndo,
+  isStepTrack,
   isThresholdTrack,
   ringsEnabled,
   setTrackCurrent,
   toggleTrackVisibility,
   undo
 } from "../state.js";
+import { buildStepView } from "../step-view.js";
 import { trackCardBase } from "../track-view.js";
 import { buildThresholdView } from "../threshold-view.js";
 import { buildRuneView, usesRuneCircle } from "../rune-view.js";
@@ -79,14 +81,18 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
 
     const tracks = getVisibleTracks().map((track) => {
       // What the GM has chosen to give away about the scale ahead. It governs
-      // the ladder's rung numbers and a rune circle's unearned names alike:
-      // both are the same secret asked about twice.
-      const reveal = isGM || track.revealLadder === true;
+      // the ladder's rung numbers, a step track's unreached names and a rune
+      // circle's unearned names alike: all the same secret asked about twice.
+      // Which flag holds the answer is the mode's business, not the caller's.
+      const reveal =
+        isGM ||
+        (isStepTrack(track) ? track.revealSteps === true : track.revealLadder === true);
 
       let card = {
         ...trackCardBase(track),
         lastChange: this.#formatLastChange(track),
         threshold: false,
+        stepped: false,
         circle: false
       };
 
@@ -99,6 +105,18 @@ export class VictoryCounterOverlay extends HandlebarsApplicationMixin(Applicatio
       // has revealed it.
       if (isThresholdTrack(track)) {
         card = { ...card, ...buildThresholdView(track, { showLadder: reveal }) };
+      }
+
+      // A step track keeps the progress numbers — it does count to a target —
+      // but replaces the bar with the pip strip, and the percentage with the
+      // name of the step it is standing on, which is what the table is waiting
+      // to hear. Branched against the threshold view rather than layered over
+      // it, because a track is in exactly one mode.
+      //
+      // Names the track has already reached are shown either way: a milestone
+      // the party has hit is not a secret. `reveal` governs only the ones ahead.
+      if (isStepTrack(track)) {
+        card = { ...card, ...buildStepView(track, { revealAll: reveal }) };
       }
 
       // Layered on top rather than branched against, because the circle is a

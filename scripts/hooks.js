@@ -193,7 +193,10 @@ async function onSetup() {
       `modules/${MODULE_ID}/templates/threshold-editor.hbs`,
       `modules/${MODULE_ID}/templates/threshold-ladder.hbs`,
       `modules/${MODULE_ID}/templates/rune-circle.hbs`,
-      `modules/${MODULE_ID}/templates/rune-editor.hbs`
+      `modules/${MODULE_ID}/templates/rune-editor.hbs`,
+      `modules/${MODULE_ID}/templates/step-card.hbs`,
+      `modules/${MODULE_ID}/templates/step-editor.hbs`,
+      `modules/${MODULE_ID}/templates/step-track.hbs`
     ]);
   } catch (err) {
     logError("Failed to preload templates.", err);

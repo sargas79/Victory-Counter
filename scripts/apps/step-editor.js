@@ -1,23 +1,21 @@
 /**
- * The threshold ladder editor: one window per track, listing its rungs as
+ * The step label editor: one window per track, listing its named steps as
  * editable rows.
  *
- * Why its own window rather than more fields on the control panel's track card:
- * a ladder is up to twelve rows of four fields each, and the panel already lays
- * its cards out in a reflowing grid sized for a card that fits on screen. Twelve
- * inline rows would make one card taller than the window and push every other
- * track out of view.
+ * Its own window rather than more fields on the control panel's track card, for
+ * the same reason the threshold editor is: ten rows of four fields inline would
+ * make one card taller than the panel window and push every other track out of
+ * view.
  *
  * Edits are held in a local draft and only written when the GM saves, so adding
- * or removing a row does not commit a half-typed ladder to the world — and a
+ * or removing a row does not commit a half-typed list to the world — and a
  * mistake is one Cancel away rather than one Undo away.
  *
- * @module victory-counter/apps/threshold-editor
+ * @module victory-counter/apps/step-editor
  */
 
-import { LIMITS, MODULE_ID, bandTone, generateId } from "../constants.js";
-import { getTrack, sanitizeThresholds, setTrackThresholds } from "../state.js";
-import { trackDisplayName } from "../track-view.js";
+import { LIMITS, MODULE_ID, clampInt, generateId } from "../constants.js";
+import { getTrack, sanitizeSteps, setTrackSteps } from "../state.js";
 import { readRungRows } from "./rung-draft.js";
 import { clampToMinimum, refitToViewport } from "./window-fit.js";
 
@@ -29,24 +27,25 @@ const BOUNDS = {
   minHeight: LIMITS.MIN_EDITOR_HEIGHT
 };
 
-export class ThresholdEditor extends HandlebarsApplicationMixin(ApplicationV2) {
+export class StepEditor extends HandlebarsApplicationMixin(ApplicationV2) {
   /** @override */
   static DEFAULT_OPTIONS = {
-    id: "pvc-threshold-editor",
+    id: "pvc-step-editor",
     tag: "form",
-    // `pvc-panel` is carried deliberately: this is the same kind of window as
-    // the control panel and wants the same fieldset, label, input and button
-    // styling. Reusing the class means the two cannot drift apart visually, and
-    // the `pvc-threshold-editor` rules layer only the differences on top.
-    classes: ["pvc", "pvc-panel", "pvc-threshold-editor"],
+    // `pvc-panel` and `pvc-threshold-editor` are both carried deliberately: this
+    // is the same kind of window as the control panel and the same kind of list
+    // as the ladder editor, and it wants both sets of styling. Reusing the
+    // classes is what stops the two editors drifting apart visually; the
+    // `pvc-step-editor` rules layer only the differences on top.
+    classes: ["pvc", "pvc-panel", "pvc-threshold-editor", "pvc-step-editor"],
     window: {
-      title: "PVC.Threshold.EditorTitle",
-      icon: "fa-solid fa-layer-group",
+      title: "PVC.Step.EditorTitle",
+      icon: "fa-solid fa-list-check",
       resizable: true,
       minimizable: true
     },
     // A concrete height rather than "auto" is what gives the window a stable box
-    // for its resize handle and lets the rung list own its own scrolling; #refit
+    // for its resize handle and lets the row list own its own scrolling; #refit
     // shrinks it when the display cannot fit this much.
     position: { width: 680, height: 600 },
     form: {
@@ -57,25 +56,25 @@ export class ThresholdEditor extends HandlebarsApplicationMixin(ApplicationV2) {
     actions: {
       addRow: this.onAddRow,
       removeRow: this.onRemoveRow,
-      saveLadder: this.onSave
+      saveSteps: this.onSave
     }
   };
 
   /** @override */
   static PARTS = {
-    main: { template: `modules/${MODULE_ID}/templates/threshold-editor.hbs` }
+    main: { template: `modules/${MODULE_ID}/templates/step-editor.hbs` }
   };
 
   /**
-   * @param {string} trackId Track whose ladder is being edited.
+   * @param {string} trackId Track whose step labels are being edited.
    * @param {object} [options]
    */
   constructor(trackId, options = {}) {
     super(options);
     this.trackId = trackId;
     /**
-     * Working copy of the ladder. Null until the first render seeds it from the
-     * stored track.
+     * Working copy of the label list. Null until the first render seeds it from
+     * the stored track.
      * @type {object[]|null}
      */
     this.draft = null;
@@ -86,8 +85,8 @@ export class ThresholdEditor extends HandlebarsApplicationMixin(ApplicationV2) {
   /** @override */
   get title() {
     const track = getTrack(this.trackId);
-    return game.i18n.format("PVC.Threshold.EditorTitleFor", {
-      title: trackDisplayName(track)
+    return game.i18n.format("PVC.Step.EditorTitleFor", {
+      title: track?.title || game.i18n.localize("PVC.DefaultTitle")
     });
   }
 
@@ -98,28 +97,34 @@ export class ThresholdEditor extends HandlebarsApplicationMixin(ApplicationV2) {
 
     // Seed once from storage; afterwards the draft is the source of truth, so a
     // re-render caused by adding a row does not discard unsaved typing.
-    if (!this.draft) this.draft = foundry.utils.deepClone(track.thresholds);
+    if (!this.draft) this.draft = foundry.utils.deepClone(track.steps);
 
-    // Sorted for display only. The GM reads a ladder bottom-to-top, and sorting
-    // on render (rather than on every keystroke) means rows never reshuffle
-    // under the cursor mid-edit.
+    // Sorted for display only. A countdown reads bottom-to-top, and sorting on
+    // render (rather than on every keystroke) means rows never reshuffle under
+    // the cursor mid-edit.
+    //
+    // No tone badge here, unlike the ladder editor: tone is measured against a
+    // threshold track's `start`, which a step track does not have. What a GM
+    // writing a countdown wants at a glance is whether the track has passed the
+    // step yet, so that is what the row shows instead.
     const rows = [...this.draft]
       .sort((a, b) => Number(a.value) - Number(b.value))
-      .map((row) => {
-        const tone = bandTone(row, track.start);
-        return {
-          ...row,
-          tone,
-          toneLabel: game.i18n.localize(`PVC.Tone.${tone}`)
-        };
-      });
+      .map((row) => ({
+        ...row,
+        reached: Number(row.value) <= track.current,
+        // A label above the target is kept rather than deleted — lowering a
+        // target, even for a moment, must not throw away what the GM wrote — but
+        // nothing draws or announces it while it is up there, so the row says so
+        // and the GM can move it or drop it.
+        beyond: Number(row.value) > track.target
+      }));
 
     return {
       missing: false,
       track,
       rows,
       limits: LIMITS,
-      atMax: rows.length >= LIMITS.MAX_THRESHOLDS,
+      atMax: rows.length >= LIMITS.MAX_STEP_LABELS,
       empty: rows.length === 0
     };
   }
@@ -142,16 +147,16 @@ export class ThresholdEditor extends HandlebarsApplicationMixin(ApplicationV2) {
   /** @override */
   _onRender(context, options) {
     super._onRender(context, options);
-    // Adding or removing a rung changes how tall the list wants to be, and a
-    // full ladder is twelve rows of four fields — comfortably taller than a
-    // laptop display. Refit so the window stays on screen; the list scrolls
-    // inside it rather than the window growing past the bottom of the monitor.
+    // Adding or removing a label changes how tall the list wants to be. Refit so
+    // the window stays on screen; the list scrolls inside it rather than the
+    // window growing past the bottom of the monitor.
     this.#refit();
   }
 
   /**
-   * Keep the window inside the viewport. Shared with the control panel, which
-   * grows the same way for the same reason — see `window-fit.js`.
+   * Keep the window inside the viewport. Shared with the control panel and the
+   * ladder editor, which grow the same way for the same reason — see
+   * `window-fit.js`.
    */
   #refit() {
     refitToViewport(this, BOUNDS);
@@ -165,11 +170,8 @@ export class ThresholdEditor extends HandlebarsApplicationMixin(ApplicationV2) {
    * Read every row back out of the DOM into the draft.
    *
    * Called before any action that re-renders, so text typed but not yet saved
-   * survives adding or removing a row.
-   *
-   * The scrape itself lives in `rung-draft.js`, shared with the step label
-   * editor: the two edit the same four-field row, and a fix to how one of them
-   * recovers a half-typed row should be a fix to both.
+   * survives adding or removing a row. Shared with the ladder editor — see
+   * `rung-draft.js`.
    */
   syncDraft() {
     this.draft = readRungRows(this.element);
@@ -180,22 +182,23 @@ export class ThresholdEditor extends HandlebarsApplicationMixin(ApplicationV2) {
   /* ---------------------------------------- */
 
   /**
-   * Append an empty rung.
+   * Append an empty label.
    *
-   * The new rung's value is one past the highest already present, which is the
-   * value a GM building a ladder upward is most likely to want and is always
-   * inside the track's range unless the ladder already reaches its ceiling.
+   * The new label's step is one past the highest already present, which is what
+   * a GM writing a countdown downward through the list is most likely to want,
+   * and is clamped into the track's own range: step 0 is the empty track and can
+   * never be reached, and a step past the target could never be reached either.
    *
-   * @this {ThresholdEditor}
+   * @this {StepEditor}
    */
   static async onAddRow() {
     this.syncDraft();
     const track = getTrack(this.trackId);
     if (!track) return;
 
-    if (this.draft.length >= LIMITS.MAX_THRESHOLDS) {
+    if (this.draft.length >= LIMITS.MAX_STEP_LABELS) {
       ui.notifications.warn(
-        game.i18n.format("PVC.Notify.MaxThresholds", { max: LIMITS.MAX_THRESHOLDS })
+        game.i18n.format("PVC.Notify.MaxSteps", { max: LIMITS.MAX_STEP_LABELS })
       );
       return;
     }
@@ -203,15 +206,11 @@ export class ThresholdEditor extends HandlebarsApplicationMixin(ApplicationV2) {
     const highest = this.draft.reduce((max, row) => {
       const value = Number(row.value);
       return Number.isFinite(value) && value > max ? value : max;
-    }, Number.NEGATIVE_INFINITY);
-
-    const next = Number.isFinite(highest)
-      ? Math.min(highest + 1, track.max)
-      : track.start;
+    }, 0);
 
     this.draft.push({
       id: generateId(),
-      value: next,
+      value: clampInt(highest + 1, 1, track.target),
       label: "",
       description: "",
       announce: true
@@ -220,7 +219,7 @@ export class ThresholdEditor extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
-   * @this {ThresholdEditor}
+   * @this {StepEditor}
    * @param {PointerEvent} event
    * @param {HTMLElement}  target
    */
@@ -231,22 +230,22 @@ export class ThresholdEditor extends HandlebarsApplicationMixin(ApplicationV2) {
   }
 
   /**
-   * Write the ladder to the track and close.
-   * @this {ThresholdEditor}
+   * Write the labels to the track and close.
+   * @this {StepEditor}
    */
   static async onSave() {
     this.syncDraft();
 
     // Sanitizing here as well as in the state layer is not redundant: it is what
-    // lets the confirmation below quote the ladder the GM is actually about to
-    // get, duplicates dropped and rungs sorted.
-    const clean = sanitizeThresholds(this.draft);
+    // lets the confirmation below quote the list the GM is actually about to
+    // get, duplicates dropped and rows sorted.
+    const clean = sanitizeSteps(this.draft);
     const unnamed = clean.filter((row) => !row.label.trim()).length;
 
     if (unnamed) {
       const proceed = await DialogV2.confirm({
-        window: { title: game.i18n.localize("PVC.Confirm.UnnamedBandsTitle") },
-        content: `<p>${game.i18n.format("PVC.Confirm.UnnamedBandsContent", {
+        window: { title: game.i18n.localize("PVC.Confirm.UnnamedStepsTitle") },
+        content: `<p>${game.i18n.format("PVC.Confirm.UnnamedStepsContent", {
           count: unnamed
         })}</p>`,
         rejectClose: false,
@@ -255,7 +254,7 @@ export class ThresholdEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       if (!proceed) return;
     }
 
-    const result = await setTrackThresholds(this.trackId, this.draft);
+    const result = await setTrackSteps(this.trackId, this.draft);
     if (!result) return;
 
     this.draft = null;
@@ -266,12 +265,12 @@ export class ThresholdEditor extends HandlebarsApplicationMixin(ApplicationV2) {
   /*  Singleton management                    */
   /* ---------------------------------------- */
 
-  /** @type {ThresholdEditor|null} */
+  /** @type {StepEditor|null} */
   static #instance = null;
 
   /**
    * Open the editor for one track, replacing any editor already open for a
-   * different one so two ladders can never be edited against one draft.
+   * different one so two label lists can never be edited against one draft.
    * @param {string} trackId
    * @returns {Promise<void>}
    */
@@ -289,7 +288,7 @@ export class ThresholdEditor extends HandlebarsApplicationMixin(ApplicationV2) {
       await this.#instance.close();
       this.#instance = null;
     }
-    if (!this.#instance) this.#instance = new ThresholdEditor(trackId);
+    if (!this.#instance) this.#instance = new StepEditor(trackId);
 
     await this.#instance.render({ force: true });
     this.#instance.bringToFront?.();
@@ -297,7 +296,7 @@ export class ThresholdEditor extends HandlebarsApplicationMixin(ApplicationV2) {
 
   /** @override */
   async close(options = {}) {
-    if (ThresholdEditor.#instance === this) ThresholdEditor.#instance = null;
+    if (StepEditor.#instance === this) StepEditor.#instance = null;
     return super.close(options);
   }
 
