@@ -79,6 +79,14 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   remembered either way, so the circle returns the moment the track can carry
   one.
 
+  A seat the GM has named carries a mark, the same promise the step strip makes
+  about a labelled pip, and the name of the seat the circle is standing on is
+  printed under the plate. Which seats mean something, and what the current one
+  means, are therefore readable without hovering every rune in turn; the seat
+  names still ride in the tooltips as well. A threshold circle is left alone:
+  every one of its seats stands for a rung and so carries a name by construction,
+  and the band kicker beside the plate already names the one that matters.
+
   State is never carried by colour alone: a seated rune differs from an adrift
   one in position, tilt, weight, size and opacity, the count is spelled out in
   digits at the centre of the plate, and every rune names itself in a tooltip.

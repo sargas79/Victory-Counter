@@ -1905,6 +1905,24 @@
   scale: 1.08;
 }
 
+/* The mark, not the colour, is what says "the GM named this seat" — the same
+   promise the step strip makes about a labelled pip, drawn as the same diamond.
+   It rides on the rune's own `currentcolor`, so it dims with an unearned seat
+   and lights with an earned one instead of reading as a state of its own. */
+.pvc .pvc-rune-mark {
+  position: absolute;
+  left: 50%;
+  /* Inside the seat rather than on its edge: the active rune carries a ring of
+     its own, and a mark sitting on that ring reads as part of it. */
+  bottom: 7%;
+  width: max(3px, calc(var(--pvc-rune-size) * 0.16));
+  height: max(3px, calc(var(--pvc-rune-size) * 0.16));
+  translate: -50% 0;
+  rotate: 45deg;
+  border-radius: 1px;
+  background: currentcolor;
+}
+
 /* Completion: every seat is taken, so the whole plate lifts rather than any one
    rune. Paired with the "Complete" badge the card already carries. */
 .pvc .pvc-runes-complete .pvc-runes-ring { border-color: var(--pvc-accent-700); }
@@ -1928,6 +1946,22 @@
 .pvc .pvc-runes[data-seats="22"],
 .pvc .pvc-runes[data-seats="23"],
 .pvc .pvc-runes[data-seats="24"] { --pvc-rune-size: 8cqw; }
+
+/* The seat the circle is standing on, named under the plate. It says what the
+   step kicker says on a step track — not the number, but what the number means —
+   so it is drawn the same way: a phrase in the card's own face, allowed to wrap,
+   rather than an upper-cased label. Only ever present on a progress or step
+   circle; a threshold circle carries the band kicker below instead. */
+.pvc .pvc-runes-caption {
+  max-width: 100%;
+  margin-top: 6px;
+  font: 600 10px/1.3 var(--pvc-font);
+  letter-spacing: 0.01em;
+  text-align: center;
+  color: var(--pvc-accent-300);
+}
+
+.pvc .pvc-negative .pvc-runes-caption { color: var(--pvc-negative); }
 
 /* The band name under a threshold circle is a caption for the plate above it,
    not the next item down the card, so it closes the card's usual gap. */

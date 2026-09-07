@@ -155,8 +155,15 @@ export function buildRuneView(track, { showLabels = false } = {}) {
     // lookup the rest of the module uses, or the rune just earned.
     const seated = rung ? track.current >= rung.value : index < filled;
     const active = rung ? track.band === rung.id : index === filled - 1;
-    const name = override?.label || seat.defaultName;
+    const custom = override?.label || "";
+    const name = custom || seat.defaultName;
     const named = seated || showLabels || !threshold;
+    // The mark is the seat saying "the GM named me", and it is only worth
+    // saying where some seats are named and others are not. Every seat of a
+    // threshold circle stands for a rung and so carries a name by construction:
+    // a mark on all of them would distinguish nothing, and the band badge and
+    // the kicker beside the plate already name the one that matters.
+    const labelled = !threshold && Boolean(custom);
     // One tooltip string rather than a conditional in the template: what a rune
     // is willing to say about itself is a single decision, and splitting it
     // across two files is how the HUD and the panel would come to disagree.
@@ -168,6 +175,7 @@ export function buildRuneView(track, { showLabels = false } = {}) {
       key: seat.key,
       seated,
       active,
+      labelled,
       name,
       glyph: override?.glyph || seat.defaultGlyph,
       // A progress seat has no band, so it has no tone of its own; the card's
@@ -188,25 +196,37 @@ export function buildRuneView(track, { showLabels = false } = {}) {
   // is the wrong half of the story when the meaning lives in the band, and it is
   // the only half a screen reader would otherwise get.
   const active = runes.find((rune) => rune.active);
-  const circleLabel = threshold
-    ? game.i18n.format("PVC.Aria.CircleBand", {
-        title: displayTitle,
-        value: track.current,
-        band: active ? active.name : bandDisplayName(null),
-        seated: seatedCount,
-        total: runes.length
-      })
-    : game.i18n.format("PVC.Aria.Circle", {
-        title: displayTitle,
-        seated: seatedCount,
-        total: runes.length
-      });
+
+  // What the circle is standing on, in words, under the plate. Only a name the
+  // GM wrote: a seat's default name is its own position said twice ("Rune 3"
+  // under a circle already showing three runes in place), so captioning with it
+  // would be noise. The threshold circle is left alone — the band kicker beside
+  // the plate is this same sentence, and it is already there.
+  const seatLabel = active?.labelled ? active.name : "";
+
+  // The caption below the plate sits inside the figure's own `role="img"`, so a
+  // screen reader never reaches it as text: a named seat has to travel in this
+  // label or it does not travel at all.
+  const counts = { title: displayTitle, seated: seatedCount, total: runes.length };
+  let circleLabel;
+  if (threshold) {
+    circleLabel = game.i18n.format("PVC.Aria.CircleBand", {
+      ...counts,
+      value: track.current,
+      band: active ? active.name : bandDisplayName(null)
+    });
+  } else if (seatLabel) {
+    circleLabel = game.i18n.format("PVC.Aria.CircleSeat", { ...counts, seat: seatLabel });
+  } else {
+    circleLabel = game.i18n.format("PVC.Aria.Circle", counts);
+  }
 
   return {
     circle: true,
     runes,
     seatCount: runes.length,
     seatedCount,
+    seatLabel,
     // The plate is aria-hidden down to the individual runes, so this is the
     // entire accessible name of the figure in both windows.
     circleLabel
