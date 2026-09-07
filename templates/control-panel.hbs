@@ -3,8 +3,9 @@
       so everything below is wrapped in a single container.
 
       The track list is a CSS Grid (`auto-fit` + `minmax`), so widening the
-      window turns one column of cards into two or three instead of growing a
-      taller scroll area.
+      window turns one column of cards into as many as the width has room for,
+      instead of growing a taller scroll area. No empty columns: `auto-fit`
+      collapses a column there is no card for, so the cards absorb the width.
 
       Mode-specific fields are shown or hidden purely by the `data-mode`
       attribute on the enclosing `[data-mode-scope]`, which the mode select
