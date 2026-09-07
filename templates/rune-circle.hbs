@@ -2,8 +2,8 @@
   The rune circle, shared by the HUD and the GM control panel.
 
   Expects a rune-shaped context — `runes`, `seatCount`, `seatedCount`,
-  `circleLabel` from `buildRuneView` — spread over the usual track fields, of
-  which it reads `current`, `target`, `threshold` and `complete`.
+  `seatLabel`, `circleLabel` from `buildRuneView` — spread over the usual track
+  fields, of which it reads `current`, `target`, `threshold` and `complete`.
 
   Each rune is an absolutely positioned span rather than an SVG node, the same
   way the ladder places its ticks: it keeps `data-tooltip` and text rendering
@@ -14,6 +14,13 @@
   A rune's *state* is never colour alone: a seated rune is upright, bright and
   on the ring, while an unearned one is dim, tilted and outside it — and the
   centre readout spells the count out in digits regardless.
+
+  A seat the GM has named carries a mark, the same promise the step strip makes
+  about a labelled pip: which seats mean something is visible without hovering
+  every one of them. A mark whose name the reader may not read yet is drawn
+  hollow, so "there is something here" and "here is what it is" stay visibly
+  different. The name of the seat the circle is standing on is printed under the
+  plate, so the one that matters right now is readable outright.
 
   The plate is aria-hidden and the wrapper carries the full label, so a screen
   reader announces "Seal the Rift, 3 of 8 runes in place" rather than reading a
@@ -28,9 +35,9 @@
     <span class="pvc-runes-ring"></span>
 
     {{#each runes}}
-    <span class="pvc-rune{{#if seated}} pvc-rune-seated{{else}} pvc-rune-adrift{{/if}}{{#if active}} pvc-rune-active{{/if}}{{#if tone}} pvc-tone-{{tone}}{{/if}}"
+    <span class="pvc-rune{{#if seated}} pvc-rune-seated{{else}} pvc-rune-adrift{{/if}}{{#if active}} pvc-rune-active{{/if}}{{#if hidden}} pvc-rune-hidden{{/if}}{{#if tone}} pvc-tone-{{tone}}{{/if}}"
           style="left: {{left}}%; top: {{top}}%; --pvc-rune-tilt: {{rotation}}deg;"
-          data-tooltip="{{tooltip}}">{{glyph}}</span>
+          data-tooltip="{{tooltip}}">{{#if labelled}}<span class="pvc-rune-mark"></span>{{/if}}{{glyph}}</span>
     {{/each}}
 
     <span class="pvc-runes-core">
@@ -41,4 +48,11 @@
       {{/unless}}
     </span>
   </div>
+
+  {{!-- The caption sits inside the `role="img"` wrapper, so it is decoration as
+        far as a screen reader is concerned — `circleLabel` carries the same name
+        for it. --}}
+  {{#if seatLabel}}
+  <span class="pvc-runes-caption">{{seatLabel}}</span>
+  {{/if}}
 </div>

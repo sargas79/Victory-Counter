@@ -79,6 +79,18 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   remembered either way, so the circle returns the moment the track can carry
   one.
 
+  A seat the GM has named carries a mark, the same promise the step strip makes
+  about a labelled pip, and the name of the seat the circle is standing on is
+  printed under the plate. A step seat takes that name from the step editor, the
+  way a threshold seat takes its own from its rung — seat 3 of a step circle
+  *is* step 3 — so naming a step names its rune, and a mark whose name is still
+  withheld is drawn hollow exactly as the pip strip draws it. Which seats mean
+  something, and what the current one means, are therefore readable without
+  hovering every rune in turn; the seat names still ride in the tooltips as
+  well. A threshold circle is left alone: every one of its seats stands for a
+  rung and so carries a name by construction, and the band kicker beside the
+  plate already names the one that matters.
+
   State is never carried by colour alone: a seated rune differs from an adrift
   one in position, tilt, weight, size and opacity, the count is spelled out in
   digits at the centre of the plate, and every rune names itself in a tooltip.
@@ -176,6 +188,14 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **A step track drawn as a rune circle showed none of its step names.** The
+  2.3.0 notes said a step circle "keeps its step name", but the seats were built
+  from the target alone: they were called "Rune 1" … "Rune n", and the names the
+  GM had written in the step editor appeared nowhere on the card — not even in a
+  tooltip. Seat *n* now takes its default name from step *n*, the same rule
+  threshold seats have always followed with their rungs, so a named step names
+  its rune, its description reaches the tooltip, and **Show Players Every Label**
+  governs the unreached ones exactly as it does on the pip strip.
 - **Widening the HUD snapped the cards back and left dead space beside them.**
   Dragging the resize grip grew the card with the window up to a point — 465px
   with one track — and then the card jumped back to its minimum width with an

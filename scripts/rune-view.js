@@ -27,6 +27,7 @@ import {
   bandTone,
   runeSeats
 } from "./constants.js";
+import { stepDisplayName } from "./step-view.js";
 import { bandDisplayName } from "./threshold-view.js";
 import { trackDisplayName } from "./track-view.js";
 
@@ -88,28 +89,50 @@ function overrideFor(track, key) {
  * default back rather than a blank seat. Deriving it in the editor as well
  * would be two answers to "what are this track's seats?".
  *
+ * A step seat takes its default name from the step it stands on, the same way a
+ * threshold seat takes its own from its rung: seat 3 of a step circle *is* step
+ * 3, and the GM has already named it in the step editor. Asking them to write
+ * that name a second time in the rune editor would be asking the same question
+ * twice — and leaving the seat called "Rune 3" would drop a name they had
+ * written the moment they switched the display.
+ *
  * @param {object} track A sanitized track.
  * @returns {Array<{index: number, key: string, rung: object|null,
- *   defaultGlyph: string, defaultName: string, caption: string}>}
+ *   step: object|null, defaultGlyph: string, defaultName: string,
+ *   caption: string}>}
  */
 export function runeSeatOutline(track) {
   const threshold = track.mode === TRACK_MODES.THRESHOLD;
+  const stepped = track.mode === TRACK_MODES.STEPS;
   const count = Math.min(runeSeatCount(track), CIRCLE.MAX_POSITIONS);
+  // Keyed lookup rather than a find() per seat, for the reason the pip strip
+  // builds the same map: a 24-seat circle would otherwise walk the label list
+  // 24 times to place at most ten names.
+  const steps = stepped
+    ? new Map(track.steps.map((step) => [Number(step.value), step]))
+    : null;
   const list = [];
 
   for (let index = 0; index < count; index += 1) {
     const rung = threshold ? track.thresholds[index] : null;
+    // Seat `index` is step `index + 1`: the strip's steps are 1-based, and a
+    // label marks its exact step, so this is a lookup and never a walk.
+    const step = steps?.get(index + 1) ?? null;
+    let defaultName;
+    if (rung) defaultName = bandDisplayName(rung);
+    else if (step) defaultName = stepDisplayName(step);
+    else defaultName = game.i18n.format("PVC.Circle.SeatName", { index: index + 1 });
+
     list.push({
       index,
       // A threshold seat is its rung, so it keeps its overrides when the GM
-      // inserts another rung beneath it. A progress seat is only ever its
-      // position, and has nothing more stable to be keyed by.
+      // inserts another rung beneath it. A progress or step seat is only ever
+      // its position, and has nothing more stable to be keyed by.
       key: rung ? rung.id : String(index),
       rung,
+      step,
       defaultGlyph: RUNE_GLYPHS[index % RUNE_GLYPHS.length],
-      defaultName: rung
-        ? bandDisplayName(rung)
-        : game.i18n.format("PVC.Circle.SeatName", { index: index + 1 }),
+      defaultName,
       caption: rung
         ? game.i18n.format("PVC.Circle.SeatRung", { value: rung.value })
         : game.i18n.format("PVC.Circle.SeatOrdinal", { index: index + 1 })
@@ -128,9 +151,13 @@ export function runeSeatOutline(track) {
  *   land — but what lies ahead on a threshold ladder is the GM's to give away,
  *   the same call `revealLadder` already makes for the rungs of the rail.
  *
- *   Ignored on a progress track, which has no ladder to withhold: its seats are
- *   numbered "Rune 1", "Rune 2" unless the GM named them, and hiding *those*
- *   would be keeping a secret that does not exist.
+ *   A step track withholds its unreached names the same way, because a step
+ *   label is the same kind of secret as a rung: `revealSteps` is the flag, and
+ *   the caller has already resolved which one to ask.
+ *
+ *   Ignored on a plain progress track, which has no milestones to withhold: its
+ *   seats are numbered "Rune 1", "Rune 2" unless the GM named them, and hiding
+ *   *those* would be keeping a secret that does not exist.
  * @returns {object}
  */
 export function buildRuneView(track, { showLabels = false } = {}) {
@@ -146,7 +173,7 @@ export function buildRuneView(track, { showLabels = false } = {}) {
 
   const runes = outline.map((seat, index) => {
     const place = geometry[index];
-    const { rung } = seat;
+    const { rung, step } = seat;
     const override = overrideFor(track, seat.key);
 
     // Seated means "the track has reached this": a rung whose value has been
@@ -155,19 +182,42 @@ export function buildRuneView(track, { showLabels = false } = {}) {
     // lookup the rest of the module uses, or the rune just earned.
     const seated = rung ? track.current >= rung.value : index < filled;
     const active = rung ? track.band === rung.id : index === filled - 1;
-    const name = override?.label || seat.defaultName;
-    const named = seated || showLabels || !threshold;
+    const custom = override?.label || "";
+    const name = custom || seat.defaultName;
+
+    // A milestone is a name the GM wrote for a place on the track — a rung, or
+    // a step label — and it is theirs to give away, so an unreached one stays
+    // unnamed until they reveal it. A rune-editor label on a plain progress
+    // seat is not that: it names a position rather than an event, and there is
+    // nothing there to keep back.
+    const milestone = Boolean(rung) || Boolean(step);
+    const named = seated || showLabels || !milestone;
+
+    // The mark is the seat saying "the GM named me", and it is only worth
+    // saying where some seats are named and others are not. Every seat of a
+    // threshold circle stands for a rung and so carries a name by construction:
+    // a mark on all of them would distinguish nothing, and the band badge and
+    // the kicker beside the plate already name the one that matters.
+    const labelled = !threshold && (Boolean(custom) || Boolean(step));
+
     // One tooltip string rather than a conditional in the template: what a rune
     // is willing to say about itself is a single decision, and splitting it
     // across two files is how the HUD and the panel would come to disagree.
     const parts = [named ? name : game.i18n.localize("PVC.Circle.Unknown")];
     if (named && rung) parts.push(`(${rung.value})`);
-    if (named && rung?.description) parts.push(`— ${rung.description}`);
+    if (named && (rung?.description || step?.description)) {
+      parts.push(`— ${rung?.description || step.description}`);
+    }
 
     return {
       key: seat.key,
       seated,
       active,
+      labelled,
+      // A mark the reader may not read yet still says "something happens here",
+      // exactly as a hidden step pip does: hiding the mark as well would make
+      // the circle lie about its own shape, so it is drawn hollow instead.
+      hidden: labelled && !named,
       name,
       glyph: override?.glyph || seat.defaultGlyph,
       // A progress seat has no band, so it has no tone of its own; the card's
@@ -188,25 +238,37 @@ export function buildRuneView(track, { showLabels = false } = {}) {
   // is the wrong half of the story when the meaning lives in the band, and it is
   // the only half a screen reader would otherwise get.
   const active = runes.find((rune) => rune.active);
-  const circleLabel = threshold
-    ? game.i18n.format("PVC.Aria.CircleBand", {
-        title: displayTitle,
-        value: track.current,
-        band: active ? active.name : bandDisplayName(null),
-        seated: seatedCount,
-        total: runes.length
-      })
-    : game.i18n.format("PVC.Aria.Circle", {
-        title: displayTitle,
-        seated: seatedCount,
-        total: runes.length
-      });
+
+  // What the circle is standing on, in words, under the plate. Only a name the
+  // GM wrote: a seat's default name is its own position said twice ("Rune 3"
+  // under a circle already showing three runes in place), so captioning with it
+  // would be noise. The threshold circle is left alone — the band kicker beside
+  // the plate is this same sentence, and it is already there.
+  const seatLabel = active?.labelled ? active.name : "";
+
+  // The caption below the plate sits inside the figure's own `role="img"`, so a
+  // screen reader never reaches it as text: a named seat has to travel in this
+  // label or it does not travel at all.
+  const counts = { title: displayTitle, seated: seatedCount, total: runes.length };
+  let circleLabel;
+  if (threshold) {
+    circleLabel = game.i18n.format("PVC.Aria.CircleBand", {
+      ...counts,
+      value: track.current,
+      band: active ? active.name : bandDisplayName(null)
+    });
+  } else if (seatLabel) {
+    circleLabel = game.i18n.format("PVC.Aria.CircleSeat", { ...counts, seat: seatLabel });
+  } else {
+    circleLabel = game.i18n.format("PVC.Aria.Circle", counts);
+  }
 
   return {
     circle: true,
     runes,
     seatCount: runes.length,
     seatedCount,
+    seatLabel,
     // The plate is aria-hidden down to the individual runes, so this is the
     // entire accessible name of the figure in both windows.
     circleLabel
