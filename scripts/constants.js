@@ -64,8 +64,12 @@ export const SETTINGS = Object.freeze({
  * - 5:   `display` and `runes`. Additive in the same way, and for a stronger
  *        reason: they decide only how a track is *drawn*, so a v4 record
  *        becomes a v5 record that renders exactly as it did before.
+ * - 6:   the step fields (`steps`, `step`, `announceSteps`, `revealSteps`).
+ *        Additive in exactly the same way as 4: no stored value changes
+ *        meaning, and a v5 record gains the four new fields from
+ *        {@link DEFAULT_TRACK} during sanitization.
  */
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 /** Resolution states a track can be in. */
 export const STATUS = Object.freeze({
@@ -81,16 +85,24 @@ export const STATUS = Object.freeze({
  * - `threshold`: starts at a GM-set value, moves up *and* down (below zero if
  *                the GM allows it), and never completes. Meaning comes from the
  *                band it currently sits in rather than from a finish line.
+ * - `steps`:     counts to a target exactly as `progress` does, but is drawn as
+ *                discrete steps of which the GM may name a few. A named step
+ *                means something *on that number alone* — step 3 is "the alarm
+ *                is raised" — and the numbers around it mean nothing in
+ *                particular. That exactness is the whole difference from
+ *                `threshold`, where a rung owns every number up to the next one.
  */
 export const TRACK_MODES = Object.freeze({
   PROGRESS: "progress",
-  THRESHOLD: "threshold"
+  THRESHOLD: "threshold",
+  STEPS: "steps"
 });
 
 /** Localization keys for the mode choices, keyed by stored value. */
 export const TRACK_MODE_LABELS = Object.freeze({
   [TRACK_MODES.PROGRESS]: "PVC.Mode.Progress",
-  [TRACK_MODES.THRESHOLD]: "PVC.Mode.Threshold"
+  [TRACK_MODES.THRESHOLD]: "PVC.Mode.Threshold",
+  [TRACK_MODES.STEPS]: "PVC.Mode.Steps"
 });
 
 /**
@@ -166,6 +178,19 @@ export const LIMITS = Object.freeze({
   MAX_THRESHOLDS: 12,
   MAX_THRESHOLD_LABEL: 60,
   MAX_THRESHOLD_DESCRIPTION: 240,
+  /**
+   * Named steps on one step track. Lower than MAX_THRESHOLDS on purpose: a step
+   * label marks one exact number, so ten of them on a countdown clock is already
+   * a dense strip, and a GM naming every step has really written a threshold
+   * ladder instead.
+   */
+  MAX_STEP_LABELS: 10,
+  /**
+   * Above this many steps the pip strip stops being readable — the pips are
+   * thinner than the gaps between them — so the readout falls back to a
+   * continuous bar with a tick at each labelled step.
+   */
+  MAX_STEP_PIPS: 20,
   /** Overlay surface width, driven by the resize grip. */
   MIN_OVERLAY_WIDTH: 264,
   MAX_OVERLAY_WIDTH: 1200,
@@ -315,6 +340,27 @@ export const DEFAULT_TRACK = Object.freeze({
   announceThresholds: true,
   /** Threshold mode: show players the whole ladder, not just their own band. */
   revealLadder: false,
+  /**
+   * Steps mode: the GM's named steps, `{id, value, label, description, announce}`
+   * — the same shape as a threshold rung, because it is the same row of fields.
+   * Sanitization sorts ascending by value and drops duplicates, exactly as it
+   * does for `thresholds`.
+   *
+   * Kept while the track is in another mode, for the same reason the ladder is:
+   * switching mode is a display decision, not permission to throw the GM's work
+   * away.
+   */
+  steps: [],
+  /**
+   * Steps mode: id of the label sitting *exactly* on `current`, or null. Derived
+   * on every read, but stored as well, for the same reason `band` is — the
+   * announcement compares the step before a change with the step after it.
+   */
+  step: null,
+  /** Steps mode: announce reaching a labelled step in chat. Per-track GM decision. */
+  announceSteps: true,
+  /** Steps mode: show players the names of steps they have not reached yet. */
+  revealSteps: false,
   visibleToPlayers: true,
   /** Post a chat card when this track's progress changes. Gated by the world setting. */
   postToChat: true,
@@ -444,6 +490,28 @@ export function resolveBand(value, thresholds) {
     found = threshold;
   }
   return found;
+}
+
+/**
+ * The step label sitting exactly on a value, or null when that number is not a
+ * labelled step.
+ *
+ * Deliberately not built on {@link resolveBand}: the exact match *is* the
+ * distinction between the two modes. A threshold rung owns every number from
+ * itself up to the next rung, so `resolveBand` walks and keeps the last one
+ * reached; a step label means something on its own number and nothing on the
+ * ones around it, so anything but equality would silently turn a step track back
+ * into a threshold track.
+ *
+ * @param {number} value
+ * @param {Array<{id: string, value: number}>} steps
+ * @returns {object|null}
+ */
+export function resolveStep(value, steps) {
+  const list = Array.isArray(steps) ? steps : [];
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  return list.find((step) => Number(step.value) === n) ?? null;
 }
 
 /**

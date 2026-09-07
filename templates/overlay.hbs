@@ -34,8 +34,10 @@
   {{!-- Polarity styling is gated on mode for the same reason as on the card
         below: `type` survives a switch to threshold mode, so a track that used
         to be a Negative progress track would otherwise keep painting itself red
-        while its band says otherwise. --}}
-  <div class="pvc-compact pvc-{{status}}{{#if threshold}} pvc-threshold pvc-tone-{{tone}}{{else}}{{#if negative}} pvc-negative{{/if}}{{/if}}{{#if ../isGM}} pvc-compact-adjust{{/if}}"
+        while its band says otherwise. A step track *does* keep its polarity —
+        it counts toward a target like any progress track — so it stays inside
+        the else branch and only adds its own marker class. --}}
+  <div class="pvc-compact pvc-{{status}}{{#if threshold}} pvc-threshold pvc-tone-{{tone}}{{else}}{{#if stepped}} pvc-stepped{{/if}}{{#if negative}} pvc-negative{{/if}}{{/if}}{{#if ../isGM}} pvc-compact-adjust{{/if}}"
        {{#if ../isGM}}role="button" tabindex="0" data-compact-adjust data-id="{{id}}"
        aria-label="{{localize 'PVC.Overlay.CompactAdjustLabel' progress=progressLabel}}"
        data-tooltip="{{localize 'PVC.Overlay.CompactAdjustHint'}}"
@@ -67,6 +69,19 @@
     <span class="pvc-compact-band pvc-tone-{{tone}}" title="{{bandLabel}}">{{bandLabel}}</span>
     <div class="pvc-track">
       <div class="pvc-track-fill" style="width: {{ladderPercent}}%"></div>
+    </div>
+    {{else if stepped}}
+    {{!-- A step chip keeps the "/ target" a progress chip has — it is counting
+          to one — and spends the room left on the name of the step it is
+          standing on, which is the part the table is waiting to hear. The pip
+          strip is deliberately not drawn here: at chip width the pips would be
+          thinner than the gaps between them. --}}
+    <span class="pvc-compact-target">/ {{target}}</span>
+    {{#if currentLabel}}
+    <span class="pvc-compact-step" title="{{currentLabel}}">{{currentLabel}}</span>
+    {{/if}}
+    <div class="pvc-track">
+      <div class="pvc-track-fill" style="width: {{percent}}%"></div>
     </div>
     {{else}}
     <span class="pvc-compact-target">/ {{target}}</span>
@@ -120,7 +135,7 @@
 
   <div class="pvc-track-grid">
   {{#each tracks}}
-  <article class="pvc-card pvc-{{status}}{{#if circle}} pvc-card-circle{{/if}}{{#if threshold}} pvc-threshold pvc-tone-{{tone}}{{else}}{{#if negative}} pvc-negative{{/if}}{{#if complete}} pvc-resolved{{/if}}{{/if}}">
+  <article class="pvc-card pvc-{{status}}{{#if circle}} pvc-card-circle{{/if}}{{#if threshold}} pvc-threshold pvc-tone-{{tone}}{{else}}{{#if stepped}} pvc-stepped{{/if}}{{#if negative}} pvc-negative{{/if}}{{#if complete}} pvc-resolved{{/if}}{{/if}}">
 
     <div class="pvc-card-header">
       <span class="pvc-card-title" title="{{displayTitle}}">{{displayTitle}}</span>
@@ -201,6 +216,29 @@
     {{!-- Chosen per track, so it wins over the world-wide ring setting: a GM who
           asked for a circle on this track asked for it on this track. --}}
     {{> "modules/victory-counter/templates/rune-circle.hbs"}}
+    {{else if stepped}}
+    {{!-- ===== Step readout ===== --}}
+    {{!-- The polarity badge and status above are shared with progress mode, so
+          only the readout itself branches. The strip wins over the world-wide
+          ring for the same reason the ladder does: it *is* this track's readout,
+          and a ring cannot show which step is the one that matters. --}}
+    <div class="pvc-readout" aria-label="{{progressLabel}}">
+      <div class="pvc-figure">
+        <span class="pvc-figure-value">{{current}}</span>
+        <span class="pvc-figure-target">/ {{target}}</span>
+      </div>
+      {{#if currentLabel}}
+      <span class="pvc-kicker pvc-step-kicker">{{currentLabel}}</span>
+      {{else}}
+      <span class="pvc-kicker">{{percent}}%</span>
+      {{/if}}
+    </div>
+
+    {{> "modules/victory-counter/templates/step-track.hbs"}}
+
+    {{#if currentDescription}}
+    <p class="pvc-band-description">{{currentDescription}}</p>
+    {{/if}}
     {{else if ../rings}}
     {{!-- ===== Ring readout ===== --}}
     <div class="pvc-ring-wrap">

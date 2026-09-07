@@ -34,6 +34,13 @@ A track runs in one of two **modes**:
   band, in either direction, it can post a chat card naming the band and quoting
   its description. Skipped bands are listed rather than swallowed. Toggle it per
   track, and per band.
+- **Step tracks.** A countdown clock drawn as discrete pips, on which the GM may
+  name up to 10 individual steps — step 3 is *The alarm is raised*, step 6 is
+  *The gate falls*, and the numbers between them mean nothing in particular.
+  A name marks its exact step and does not stick: move on and the track stops
+  naming it. Reaching a named step announces in chat, gated the same way band
+  changes are. Everything else is progress-track behaviour — it counts to a
+  target, completes there, and resets to zero.
 - **Positive and negative tracks.** Positive is the default and keeps the
   module's accent colour. Negative tracks show their progress numbers and ring
   in red — plus an arrow icon and the written word *Negative*, so the
@@ -200,6 +207,60 @@ progress track with a target above 24, or a threshold track whose ladder is stil
 empty, falls back to its standard readout and the control panel says why. The
 choice is remembered, so the circle returns the moment the track can carry one.
 
+#### Step tracks
+
+Say the party has six rounds before the vault seals, and two of those rounds
+carry a name:
+
+| At step | Name | Means |
+| --- | --- | --- |
+| 3 | The Alarm Is Raised | The watch doubles and the gate is barred until dawn. |
+| 6 | The Gate Falls | The vault seals. Whoever is inside stays inside. |
+
+Create the track with Mode **Steps** and Target 6, then add those two labels in
+**Edit Step Labels**. The counter draws six pips; pips 3 and 6 carry a mark.
+
+The difference from a threshold ladder is the whole point of the mode: a step
+label means something **on its own number only**. At 3 the card reads *The Alarm
+Is Raised*; at 4 it reads nothing in particular, because nothing in particular
+happens at 4. A threshold rung, by contrast, owns every number from itself up to
+the next rung — if that is what you want, use a Threshold track.
+
+Otherwise a step track is a progress track: it counts up from zero, completes at
+its target, respects **Allow Progress Beyond Target**, resets to zero, and
+carries a Positive/Negative polarity.
+
+Announcements use the same three independent switches as bands, with the step
+ones in place of the band ones:
+
+| Switch | Where | Covers |
+| --- | --- | --- |
+| **Post Progress to Chat** | Module settings | Every card, for every track. Master switch. |
+| **Announce in Chat** | Track card | Every value change on that track. |
+| **Announce Step Labels** | Track card | Only landing on a named step. |
+| **Announce This Step** | Label editor | Lets one step pass without comment. |
+
+A jump that clears several named steps announces the one it landed on and lists
+the ones it travelled over. Stepping *back* onto a named step says so too, and
+stepping back onto an unnamed one says nothing. Rewriting the labels never
+announces anything.
+
+**Show Players Every Label** is off by default: players see the names of steps
+the track has already reached — a milestone the party has hit is not a secret —
+and an unnamed mark for the ones ahead. Turn it on to show the whole list up
+front.
+
+Above 20 steps the pip strip would be thinner than the gaps between its pips, so
+the readout falls back to the continuous bar with a tick at each named step. A
+60-step clock stays legible.
+
+**Labels above the target.** The editor caps a new label at the track's target,
+but lowering the target later does not delete the labels above it — that would
+throw away the GM's work over a number that may go back up. Such a label is
+simply not reachable: the strip does not draw it, the *Next* readout skips it,
+and the editor marks the row so it can be moved or removed. Raise the target and
+it comes back.
+
 ### Players
 
 - The HUD appears automatically when the GM starts a visible track.
@@ -218,7 +279,10 @@ On a progress track, players see the name, the Positive/Negative indicator, the
 current value against the target, the ring (when enabled) and the completion
 state. On a threshold track they see the name, the value, the band they are
 currently in and what it means, and where they sit on the scale — the rest of the
-ladder only if the GM has revealed it. A track drawn as a rune circle follows the
+ladder only if the GM has revealed it. On a step track they see the pips, how
+many are filled, the name and description of the step the track is standing on,
+and a mark on every named step ahead — those names only if the GM has revealed
+them. A track drawn as a rune circle follows the
 same rule: everyone sees which runes are seated and which are still adrift, but
 on a threshold track an unearned rune stays unnamed until the ladder is revealed.
 
@@ -271,6 +335,35 @@ Rungs may be passed in any order; ids are generated for any that arrive without
 one, and the list is sorted, deduplicated by value and capped on the way in.
 Writing a ladder never posts a chat card.
 
+Step tracks use the value calls as well, plus their own labels:
+
+```js
+const vault = await vc.create({
+  title: "Seal the Vault",
+  mode: vc.MODES.STEPS,
+  target: 6,
+  type: "negative"
+});
+
+await vc.setSteps(vault.id, [
+  { value: 3, label: "The Alarm Is Raised", description: "The watch doubles." },
+  { value: 6, label: "The Gate Falls",      description: "The vault seals." }
+]);
+
+await vc.increase(vault.id, 3);   // 0 -> 3, announces "The Alarm Is Raised"
+vc.getStep(vault.id);             // that label
+await vc.increase(vault.id);      // 3 -> 4
+vc.getStep(vault.id);             // null — 4 is not a named step
+await vc.setProgress(vault.id, 6);// announces "The Gate Falls"; track completes
+await vc.toggleStepAnnounce(vault.id);
+```
+
+Labels may be passed in any order and are sorted, deduplicated and capped the
+same way rungs are. A label's `value` is the step it marks, from 1 upward — step
+0 is the empty track and can never be reached. Writing the labels never posts a
+chat card, and `getStep()` is an exact match, never a walk: between two labels it
+returns `null`.
+
 Either mode can be drawn as a rune circle instead of its usual readout:
 
 ```js
@@ -309,7 +402,7 @@ One world setting (`tracks`) holds an array of:
 
 ```json
 {
-  "schema": 5,
+  "schema": 6,
   "id": "unique-track-id",
   "active": true,
   "title": "Raise the Alarm",
@@ -326,6 +419,10 @@ One world setting (`tracks`) holds an array of:
   "runes": [],
   "announceThresholds": true,
   "revealLadder": false,
+  "steps": [],
+  "step": null,
+  "announceSteps": true,
+  "revealSteps": false,
   "visibleToPlayers": true,
   "postToChat": true,
   "status": "running",
@@ -335,9 +432,10 @@ One world setting (`tracks`) holds an array of:
 ```
 
 `mode` decides which fields mean anything. A `progress` track reads `target` and
-ignores `start`/`min`/`max`/`thresholds`; a `threshold` track does the reverse.
+ignores `start`/`min`/`max`/`thresholds`/`steps`; a `threshold` track reads the
+threshold fields and ignores `target`; a `steps` track reads `target` and `steps`.
 The unused fields are kept rather than stripped, so switching a track between
-modes and back does not throw away a ladder the GM wrote.
+modes and back does not throw away a ladder or a label list the GM wrote.
 
 `display` is independent of `mode`: it decides only how the track is drawn, and
 no value, bound or status anywhere in the module reads it. `standard` is the bar,
@@ -355,18 +453,31 @@ Each entry in `thresholds` is
 The array is sorted ascending by `value` and deduplicated by it on every read, so
 only one band can ever own a given number.
 
-Two fields are derived and never authored:
+Each entry in `steps` has the identical shape — it is the same row of fields —
+and is sorted and deduplicated the same way. The two differ only in their bounds
+and their cap: a step's `value` is a step number from 1 to 100 and a track holds
+at most 10 of them, against a threshold's -999 to 999 and 12.
 
-- `status` — `complete` when a progress track has `current >= target`, otherwise
-  `running`. A threshold track is always `running`; it has no finish line.
+Three fields are derived and never authored:
+
+- `status` — `complete` when a progress or steps track has `current >= target`,
+  otherwise `running`. A threshold track is always `running`; it has no finish
+  line.
 - `band` — the id of the threshold the value currently sits in, or `null` when it
   is below every rung. Recomputed on every read so a hand-edited ladder cannot
   leave it pointing at a rung that no longer exists, but also stored, because
   announcements compare the band before a change with the band after it.
+- `step` — the id of the label sitting **exactly** on the current value, or
+  `null`. Stored for the same reason `band` is. The exact match is what separates
+  the two modes: a rung owns every number up to the next one, a step label owns
+  only its own.
 
 `legacy` holds the pre-schema-3 failure fields of a migrated track, and is never
 read at runtime.
 
+Upgrading from schema 5 is purely additive: every track gains `steps: []`,
+`step: null`, `announceSteps: true` and `revealSteps: false`, and no stored value
+changes meaning.
 Upgrading from schema 4 is purely additive and changes nothing visible: every
 track gains `display: "standard"` and an empty `runes` array, which is exactly
 how it was already being drawn.
@@ -401,7 +512,7 @@ checks can be done in a single GM session.
    required-successes as the target, all marked *Positive*, with no console
    errors.
 5. Enable **Debug Logging** and reload. The console prints one migration summary
-   line; a second reload prints "already at schema 5 — nothing to do."
+   line; a second reload prints "already at schema 6 — nothing to do."
 6. Hand-edit a track's stored data to remove `target`, or set it to `null`. It
    reloads with a safe default instead of throwing.
 6a. With schema 3 data present, load the world as GM. Every track appears exactly
@@ -507,6 +618,43 @@ checks can be done in a single GM session.
     there, and no chat card was posted for either switch.
 43. Collapse the HUD. The threshold chip shows the value and band name, with no
     `/ target`.
+
+**Step tracks**
+
+S1. Create a step track with Target 6. The card shows six empty pips and reads
+    `0 / 6`.
+S2. Open **Edit Step Labels**, add labels at 3 and 6, and save. Pips 3 and 6
+    carry a mark; the others do not. Try to add an eleventh label: it is refused
+    with the cap notice.
+S3. Press `+` three times. Pip 3 fills and is outlined as current, its name and
+    description appear on the card, and exactly one chat card announces reaching
+    it.
+S4. Jump from 3 to 6 with the "set" field. One card announces reaching the step
+    at 6 and nothing in between is swallowed; the track reads **Complete**.
+S5. Step back to 4. No "reached" announcement, and the card shows no current
+    label — 4 is not a named step.
+S6. Turn **Announce Step Labels** off and cross a label: silence. Turn it back
+    on, turn one label's **Announce This Step** off, and cross that one: silence
+    for that label only.
+S7. With **Show Players Every Label** off, log in as a player. Reached labels are
+    named; the ones ahead show as unnamed marks. Turn the setting on and the rest
+    appear. On a second client, confirm the strip and labels update live without
+    a reload.
+S8. Switch the track to **Thresholds** and back to **Steps**. The labels are
+    still there, and no chat card was posted for either switch.
+S9. Set Target to 40. The strip falls back to the bar with a tick at each
+    labelled step.
+S10. Lower Target to 4 with a label still at 6. The label is kept but the editor
+     marks the row as beyond the target, the strip does not draw it, and the
+     *Next* readout skips it. Raise Target back to 6 and it returns.
+S11. Set Display to **Circle** on a step track. The circle seats one rune per
+     step and the strip gives way to it; switch back to Standard and the strip
+     returns.
+S12. Collapse the HUD. The step chip shows the value, the target and the current
+     label.
+S13. Reload the world. An existing schema-5 world's tracks come back unchanged,
+     now at `schema: 6`, and the console migration summary (with **Debug
+     Logging** on) reports it.
 
 **Terminology**
 

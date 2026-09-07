@@ -1,0 +1,141 @@
+{{!-- The step label editor. One row per named step, held as a local draft until
+      the GM saves; nothing here writes to the world on its own.
+
+      Structurally the threshold editor, and deliberately so — it is the same
+      row of fields, and the shared `.pvc-threshold-editor, .pvc-step-editor`
+      CSS keeps the two looking like one feature.
+
+      Two differences, both about what a step *is*. There is no tone badge: tone
+      is measured against a threshold track's starting value, which a step track
+      does not have. In its place each row says whether that step has been
+      reached yet, which is the thing a GM writing a countdown actually wants to
+      know at a glance.
+
+      Rows are addressed with `data-field` rather than `name`: ten rows of
+      identically-named inputs would form an ambiguous submission, and this form
+      is never submitted natively anyway.
+
+      An ApplicationV2 template part must resolve to exactly one root element. --}}
+
+<div class="pvc-threshold-body">
+
+{{#if missing}}
+<p class="notes">{{localize "PVC.Notify.NoTrack"}}</p>
+{{else}}
+
+{{!-- Everything except Save scrolls, for the reason spelled out in
+      threshold-editor.hbs: Save is the one control that must stay reachable at
+      any window size. --}}
+<div class="pvc-threshold-scroll">
+
+<fieldset class="pvc-threshold-intro">
+  <legend>{{localize "PVC.Step.LabelsLegend"}}</legend>
+  <p class="hint">
+    {{localize "PVC.Step.LabelsHint"}}
+  </p>
+  <p class="notes">
+    {{localize "PVC.Step.RangeNotice" target=track.target current=track.current}}
+  </p>
+</fieldset>
+
+<fieldset class="pvc-threshold-rows">
+  <legend>{{localize "PVC.Step.RowsLegend"}}</legend>
+
+  {{#if empty}}
+  <p class="notes">{{localize "PVC.Step.NoLabels"}}</p>
+  {{/if}}
+
+  {{#each rows}}
+  <div class="pvc-threshold-row pvc-step-row{{#if reached}} pvc-step-row-reached{{/if}}{{#if beyond}} pvc-step-row-beyond{{/if}}"
+       data-rung-row data-id="{{id}}">
+
+    <div class="pvc-threshold-row-head">
+      {{#if beyond}}
+      {{!-- Kept, not deleted: lowering a target must not throw away what the GM
+            wrote. But nothing draws or announces a label up here, so the row
+            says so plainly rather than looking like every other one. --}}
+      <span class="pvc-step-state pvc-step-state-beyond"
+            data-tooltip="{{localize 'PVC.Step.BeyondHint'}}">
+        <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+        {{localize "PVC.Step.Beyond"}}
+      </span>
+      {{else}}
+      <span class="pvc-step-state" data-tooltip="{{localize 'PVC.Step.StateHint'}}">
+        <i class="fa-solid {{#if reached}}fa-circle-check{{else}}fa-circle{{/if}}"
+           aria-hidden="true"></i>
+        {{#if reached}}{{localize "PVC.Step.Reached"}}{{else}}{{localize "PVC.Step.NotReached"}}{{/if}}
+      </span>
+      {{/if}}
+      <button type="button" class="pvc-danger pvc-threshold-remove"
+              data-action="removeRow" data-id="{{id}}"
+              data-tooltip="{{localize 'PVC.Step.RemoveLabel'}}"
+              aria-label="{{localize 'PVC.Step.RemoveLabel'}}">
+        <i class="fa-solid fa-trash" aria-hidden="true"></i>
+      </button>
+    </div>
+
+    <div class="pvc-field-row">
+      <div class="form-group pvc-field-narrow">
+        <label for="pvc-st-value-{{id}}">{{localize "PVC.Step.Value"}}</label>
+        <div class="form-fields">
+          <input type="number" id="pvc-st-value-{{id}}" data-field="value" value="{{value}}"
+                 min="1" max="{{../track.target}}" step="1"
+                 data-tooltip="{{localize 'PVC.Step.ValueHint'}}">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="pvc-st-label-{{id}}">{{localize "PVC.Step.Label"}}</label>
+        <div class="form-fields">
+          <input type="text" id="pvc-st-label-{{id}}" data-field="label" value="{{label}}"
+                 maxlength="{{../limits.MAX_THRESHOLD_LABEL}}"
+                 placeholder="{{localize 'PVC.Step.LabelPlaceholder'}}">
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="pvc-st-desc-{{id}}">{{localize "PVC.Step.Description"}}</label>
+      <div class="form-fields">
+        <textarea id="pvc-st-desc-{{id}}" data-field="description" rows="2"
+                  maxlength="{{../limits.MAX_THRESHOLD_DESCRIPTION}}"
+                  placeholder="{{localize 'PVC.Step.DescriptionPlaceholder'}}">{{description}}</textarea>
+      </div>
+      <p class="hint">{{localize "PVC.Step.DescriptionHint"}}</p>
+    </div>
+
+    <div class="form-group">
+      <label for="pvc-st-announce-{{id}}">{{localize "PVC.Step.Announce"}}</label>
+      <div class="form-fields">
+        <input type="checkbox" id="pvc-st-announce-{{id}}" data-field="announce"
+               {{checked announce}}
+               data-tooltip="{{localize 'PVC.Step.AnnounceHint'}}">
+      </div>
+    </div>
+
+  </div>
+  {{/each}}
+
+  <footer class="pvc-panel-actions">
+    <button type="button" data-action="addRow" {{disabled atMax}}>
+      <i class="fa-solid fa-plus" aria-hidden="true"></i>
+      {{localize "PVC.Step.AddLabel"}}
+    </button>
+    {{#if atMax}}
+    <span class="notes">{{localize "PVC.Step.MaxLabels" max=limits.MAX_STEP_LABELS}}</span>
+    {{/if}}
+  </footer>
+</fieldset>
+
+</div>
+
+<footer class="pvc-panel-actions pvc-threshold-save">
+  <button type="button" class="pvc-primary" data-action="saveSteps">
+    <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>
+    {{localize "PVC.Step.SaveLabels"}}
+  </button>
+</footer>
+
+{{/if}}
+
+</div>

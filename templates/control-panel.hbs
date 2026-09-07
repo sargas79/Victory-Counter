@@ -13,6 +13,11 @@
       fields it governs — `#bindModeSwitches` finds it with `closest()`, which
       only walks ancestors.
 
+      A `data-mode-group` lists every mode it belongs to, space-separated, and
+      the CSS hides any group that does not list the active one. That is what
+      lets the target/type row be written once and shown in both progress and
+      steps mode rather than duplicated into two blocks that could disagree.
+
       Hidden fields stay in the DOM on purpose: the form readers still find
       them, so switching mode twice never loses what was typed in between. --}}
 
@@ -63,7 +68,7 @@
 
   <p class="hint">{{localize "PVC.Panel.TrackNameHint"}}</p>
 
-  <div class="pvc-field-row" data-mode-group="progress">
+  <div class="pvc-field-row" data-mode-group="progress steps">
     <div class="form-group pvc-field-narrow">
       <label for="pvc-new-target">{{localize "PVC.Panel.Target"}}</label>
       <div class="form-fields">
@@ -130,6 +135,18 @@
     </div>
   </div>
 
+  <div data-mode-group="steps">
+    <p class="hint">{{localize "PVC.Panel.StepsCreateHint"}}</p>
+
+    <div class="form-group">
+      <label for="pvc-new-reveal-steps">{{localize "PVC.Panel.RevealSteps"}}</label>
+      <div class="form-fields">
+        <input type="checkbox" id="pvc-new-reveal-steps" name="new-revealSteps">
+      </div>
+      <p class="hint">{{localize "PVC.Panel.RevealStepsHint"}}</p>
+    </div>
+  </div>
+
   <div class="form-group">
     <label for="pvc-new-visible">{{localize "PVC.Panel.VisibleToPlayers"}}</label>
     <div class="form-fields">
@@ -160,7 +177,7 @@
         survives a switch to threshold mode, so a track that used to be Negative
         would otherwise keep its red numerals while its band tone says the
         opposite; and a threshold track never completes. --}}
-  <div class="pvc-track-card{{#if circle}} pvc-card-circle{{/if}}{{#if threshold}} pvc-threshold pvc-tone-{{tone}}{{else}}{{#if negative}} pvc-negative{{/if}}{{#if complete}} pvc-resolved{{/if}}{{/if}}"
+  <div class="pvc-track-card{{#if circle}} pvc-card-circle{{/if}}{{#if threshold}} pvc-threshold pvc-tone-{{tone}}{{else}}{{#if stepped}} pvc-stepped{{/if}}{{#if negative}} pvc-negative{{/if}}{{#if complete}} pvc-resolved{{/if}}{{/if}}"
        data-id="{{id}}" data-mode-scope data-mode="{{mode}}" data-display="{{display}}">
 
     <div class="pvc-panel-status-line">
@@ -205,6 +222,11 @@
     </div>
     {{else if threshold}}
     {{> "modules/victory-counter/templates/threshold-ladder.hbs"}}
+    {{else if stepped}}
+    {{!-- The strip replaces the ring, for the same reason the ladder does: it is
+          already this track's readout, and a ring cannot show which step is the
+          one that matters. --}}
+    {{> "modules/victory-counter/templates/step-track.hbs"}}
     {{else if ../rings}}
     <div class="pvc-ring-wrap pvc-ring-compact">
       {{> "modules/victory-counter/templates/progress-ring.hbs" ring=../ring}}
@@ -286,7 +308,7 @@
       </div>
     </div>
 
-    <div class="pvc-field-row" data-mode-group="progress">
+    <div class="pvc-field-row" data-mode-group="progress steps">
       <div class="form-group pvc-field-narrow">
         <label for="pvc-target-{{id}}">{{localize "PVC.Panel.Target"}}</label>
         <div class="form-fields">
@@ -373,6 +395,46 @@
             <i class="fa-solid {{#if announcingThresholds}}fa-bell{{else}}fa-bell-slash{{/if}}"
                aria-hidden="true"></i>
             {{#if announcingThresholds}}{{localize "PVC.Panel.BandsAnnouncing"}}{{else}}{{localize "PVC.Panel.BandsSilent"}}{{/if}}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div data-mode-group="steps">
+      <div class="form-group">
+        <label for="pvc-reveal-steps-{{id}}">{{localize "PVC.Panel.RevealSteps"}}</label>
+        <div class="form-fields">
+          <input type="checkbox" id="pvc-reveal-steps-{{id}}" name="revealSteps-{{id}}"
+                 {{checked revealSteps}}
+                 data-tooltip="{{localize 'PVC.Panel.RevealStepsHint'}}">
+        </div>
+      </div>
+
+      <div class="pvc-ladder-summary">
+        <span class="notes">
+          {{#if stepCount}}
+          {{localize "PVC.Panel.StepsSummary" count=stepCount}}
+          {{else}}
+          {{localize "PVC.Panel.StepsEmpty"}}
+          {{/if}}
+        </span>
+        <button type="button" data-action="editSteps" data-id="{{id}}"
+                data-tooltip="{{localize 'PVC.Panel.EditStepsHint'}}">
+          <i class="fa-solid fa-list-check" aria-hidden="true"></i>
+          {{localize "PVC.Panel.EditSteps"}}
+        </button>
+      </div>
+
+      <div class="form-group">
+        <label for="pvc-step-announce-{{id}}">{{localize "PVC.Panel.AnnounceSteps"}}</label>
+        <div class="form-fields">
+          <button type="button" id="pvc-step-announce-{{id}}"
+                  data-action="toggleStepAnnounce" data-id="{{id}}"
+                  data-tooltip="{{localize 'PVC.Panel.AnnounceStepsHint'}}"
+                  aria-pressed="{{#if announcingSteps}}true{{else}}false{{/if}}">
+            <i class="fa-solid {{#if announcingSteps}}fa-bell{{else}}fa-bell-slash{{/if}}"
+               aria-hidden="true"></i>
+            {{#if announcingSteps}}{{localize "PVC.Panel.StepsAnnouncing"}}{{else}}{{localize "PVC.Panel.StepsSilent"}}{{/if}}
           </button>
         </div>
       </div>

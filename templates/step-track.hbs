@@ -1,0 +1,53 @@
+{{!--
+  The strip a step track is read against, shared by the HUD and the GM control
+  panel the way threshold-ladder.hbs is.
+
+  Expects a step-shaped context: `segmented`, `pips`, `markers`, `percent`,
+  `current`, `target`, `nextLabel` and `progressLabel`.
+
+  Two readouts, one meaning. Up to MAX_STEP_PIPS steps the track is drawn as one
+  pip per step, which is what makes "step 3 of 6" a thing you can count rather
+  than estimate. Above that the pips are thinner than the gaps between them, so
+  it falls back to the continuous bar a progress track uses, with a tick at each
+  labelled step — a 60-step clock stays legible instead of becoming a grey haze.
+
+  A labelled pip is never distinguished by colour alone: it carries a mark, a
+  filled pip is solid rather than hollow, and the current step is outlined.
+
+  The strip is aria-hidden and the wrapper carries the full label, so a screen
+  reader announces "Escape the Vault, step 3 of 6, The alarm is raised" rather
+  than sixty loose list items.
+--}}
+<div class="pvc-steps" role="img" aria-label="{{progressLabel}}">
+
+  {{#if segmented}}
+  <div class="pvc-step-strip" aria-hidden="true">
+    {{#each pips}}
+    <span class="pvc-step-pip{{#if filled}} pvc-step-filled{{/if}}{{#if labelled}} pvc-step-labelled{{/if}}{{#if current}} pvc-step-current{{/if}}{{#if hidden}} pvc-step-hidden{{/if}}"
+          data-tooltip="{{tooltip}}">
+      {{#if labelled}}<span class="pvc-step-mark"></span>{{/if}}
+    </span>
+    {{/each}}
+  </div>
+  {{else}}
+  {{!-- Fallback: a continuous bar like a progress track's, with the named steps
+        marked on it. Deliberately *not* the `.pvc-track` element itself: those
+        rules are scoped to `#pvc-overlay`, so the panel would not get them, and
+        they clip their overflow — which would swallow the ticks this readout
+        exists to draw. --}}
+  <div class="pvc-step-rail" aria-hidden="true">
+    <div class="pvc-step-rail-fill" style="width: {{percent}}%"></div>
+    {{#each markers}}
+    <span class="pvc-step-tick{{#if reached}} pvc-step-tick-reached{{/if}}{{#if current}} pvc-step-tick-current{{/if}}{{#if hidden}} pvc-step-hidden{{/if}}"
+          style="left: {{percent}}%" data-tooltip="{{tooltip}}"></span>
+    {{/each}}
+  </div>
+  {{/if}}
+
+  <div class="pvc-step-caption" aria-hidden="true">
+    <span class="pvc-step-count">{{current}} / {{target}}</span>
+    {{#if nextLabel}}
+    <span class="pvc-step-next">{{localize "PVC.Step.Next" name=nextLabel.name value=nextLabel.value}}</span>
+    {{/if}}
+  </div>
+</div>
