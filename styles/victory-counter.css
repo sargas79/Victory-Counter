@@ -13,10 +13,16 @@
    greyscale display, and a screen reader.
 
    Layout note: both the HUD and the control panel lay their cards out with
-   CSS Grid using `repeat(auto-fill, minmax(<min>, 1fr))`. Columns therefore
-   follow the container's own width — one column when narrow, two or three when
-   wide — and cards carry `min-width: 0` so their content can actually shrink
-   instead of forcing the grid wider than its container.
+   CSS Grid using `repeat(auto-fit, minmax(<min>, 1fr))`. Columns therefore
+   follow the container's own width — one when narrow, as many as it has room
+   for when wide — and cards carry `min-width: 0` so their content can actually
+   shrink instead of forcing the grid wider than its container.
+
+   `auto-fit` rather than `auto-fill`: with `auto-fill`, a container wide enough
+   for a column it has no card for keeps that column anyway, so widening past a
+   breakpoint snapped the cards back to their minimum and left dead space at the
+   side. `auto-fit` collapses the empty tracks, so the cards on screen always
+   absorb the width.
    ========================================================================== */
 
 .pvc {
@@ -227,7 +233,7 @@
 
 #pvc-overlay .pvc-track-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--pvc-card-min), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(var(--pvc-card-min), 1fr));
   gap: 1px;
   /* The hairline between cards is the gap showing through. */
   background: var(--pvc-hairline);
@@ -810,7 +816,7 @@
 
 .pvc-panel .pvc-track-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(268px, 1fr));
   gap: 9px;
   align-items: start;
   min-width: 0;

@@ -196,6 +196,17 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   threshold seats have always followed with their rungs, so a named step names
   its rune, its description reaches the tooltip, and **Show Players Every Label**
   governs the unreached ones exactly as it does on the pip strip.
+- **Widening the HUD snapped the cards back and left dead space beside them.**
+  Dragging the resize grip grew the card with the window up to a point — 465px
+  with one track — and then the card jumped back to its minimum width with an
+  empty gap where the rest of the window used to be. Both card grids asked for
+  `repeat(auto-fill, …)`, which keeps a column the moment the container is wide
+  enough for one *whether or not there is a card to put in it*: the second
+  column was real, it was simply empty, and it took its share of the width from
+  the card that was there. They now ask for `auto-fit`, which collapses the
+  empty tracks, so the cards on screen always absorb the full width and a column
+  only appears when a card moves into it. Applies to the GM control panel as
+  well, which grew the same gap for the same reason.
 - **The "maximum tracks reached" warning showed a literal `{max}`.** A GM who
   filled all ten track slots was told "The maximum of {max} tracks is already in
   use" rather than the number. Foundry's `localize` Handlebars helper only routes
