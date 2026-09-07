@@ -7,7 +7,7 @@
  * placement to CSS plus the drag handler below.
  *
  * Layout notes:
- * - The card collection is a CSS Grid (`auto-fill` + `minmax`), so the HUD
+ * - The card collection is a CSS Grid (`auto-fit` + `minmax`), so the HUD
  *   reflows into one, two or three columns purely from its own width.
  * - The HUD's width is a per-user client setting, adjusted with the resize grip
  *   in the bottom-right corner. The grip lives outside the scrolling grid, so it
