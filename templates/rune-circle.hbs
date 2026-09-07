@@ -17,8 +17,10 @@
 
   A seat the GM has named carries a mark, the same promise the step strip makes
   about a labelled pip: which seats mean something is visible without hovering
-  every one of them. The name of the seat the circle is standing on is printed
-  under the plate, so the one that matters right now is readable outright.
+  every one of them. A mark whose name the reader may not read yet is drawn
+  hollow, so "there is something here" and "here is what it is" stay visibly
+  different. The name of the seat the circle is standing on is printed under the
+  plate, so the one that matters right now is readable outright.
 
   The plate is aria-hidden and the wrapper carries the full label, so a screen
   reader announces "Seal the Rift, 3 of 8 runes in place" rather than reading a
@@ -33,7 +35,7 @@
     <span class="pvc-runes-ring"></span>
 
     {{#each runes}}
-    <span class="pvc-rune{{#if seated}} pvc-rune-seated{{else}} pvc-rune-adrift{{/if}}{{#if active}} pvc-rune-active{{/if}}{{#if tone}} pvc-tone-{{tone}}{{/if}}"
+    <span class="pvc-rune{{#if seated}} pvc-rune-seated{{else}} pvc-rune-adrift{{/if}}{{#if active}} pvc-rune-active{{/if}}{{#if hidden}} pvc-rune-hidden{{/if}}{{#if tone}} pvc-tone-{{tone}}{{/if}}"
           style="left: {{left}}%; top: {{top}}%; --pvc-rune-tilt: {{rotation}}deg;"
           data-tooltip="{{tooltip}}">{{#if labelled}}<span class="pvc-rune-mark"></span>{{/if}}{{glyph}}</span>
     {{/each}}

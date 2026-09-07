@@ -81,7 +81,10 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
   A seat the GM has named carries a mark, the same promise the step strip makes
   about a labelled pip, and the name of the seat the circle is standing on is
-  printed under the plate. Which seats mean something, and what the current one
+  printed under the plate. A step seat takes that name from the step editor, the
+  way a threshold seat takes its own from its rung — seat 3 of a step circle *is*
+  step 3 — so naming a step names its rune, and a mark whose name is still
+  withheld is drawn hollow exactly as the pip strip draws it. Which seats mean something, and what the current one
   means, are therefore readable without hovering every rune in turn; the seat
   names still ride in the tooltips as well. A threshold circle is left alone:
   every one of its seats stands for a rung and so carries a name by construction,
@@ -184,6 +187,14 @@ This project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
+- **A step track drawn as a rune circle showed none of its step names.** The
+  2.3.0 notes said a step circle "keeps its step name", but the seats were built
+  from the target alone: they were called "Rune 1" … "Rune n", and the names the
+  GM had written in the step editor appeared nowhere on the card — not even in a
+  tooltip. Seat *n* now takes its default name from step *n*, the same rule
+  threshold seats have always followed with their rungs, so a named step names
+  its rune, its description reaches the tooltip, and **Show Players Every Label**
+  governs the unreached ones exactly as it does on the pip strip.
 - **The "maximum tracks reached" warning showed a literal `{max}`.** A GM who
   filled all ten track slots was told "The maximum of {max} tracks is already in
   use" rather than the number. Foundry's `localize` Handlebars helper only routes
